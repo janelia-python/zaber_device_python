@@ -35,11 +35,9 @@ class ZaberError(Exception):
 
 class ZaberDevice(object):
     '''
-    This Python package (zaber_device) creates a class named
-    ZaberDevice, which contains an instance of
-    serial_device2.SerialDevice and adds methods to it to interface to
-    Mettler Toledo balances and scales that use the Mettler Toledo
-    Standard Interface Command Set (MT-SICS).
+    This Python package (zaber_device) creates a class named ZaberDevice,
+    which contains an instance of serial_device2.SerialDevice and adds
+    methods to it to interface to Zaber motorized linear slides.
 
     Example Usage:
 
@@ -107,7 +105,7 @@ class ZaberDevice(object):
         pass
 
     def _args_to_request(self,*args):
-        request = ''.join(map(str,args))
+        request = ''.join(map(chr,args))
         request = request + '\r\n';
         return request
 

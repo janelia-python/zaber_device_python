@@ -1,11 +1,9 @@
 zaber_device_python
 ======================
 
-This Python package (mettler\_toledo\_device) creates a class named
-ZaberDevice, which contains an instance of
-serial\_device2.SerialDevice and adds methods to it to interface to
-Mettler Toledo balances and scales that use the Mettler Toledo
-Standard Interface Command Set (MT-SICS).
+This Python package (zaber\_device) creates a class named ZaberDevice,
+which contains an instance of serial\_device2.SerialDevice and adds
+methods to it to interface to Zaber motorized linear slides.
 
 Authors::
 

@@ -17,7 +17,7 @@ setup(
     # http://packaging.python.org/en/latest/tutorial.html#version
     version=get_git_version(),
 
-    description='Interface to Mettler Toledo balances and scales that use the Mettler Toledo Standard Interface Command Set (MT-SICS).',
+    description='Interface to Zaber motorized linear slides.',
     long_description=long_description,
 
     # The project's main homepage.
@@ -57,7 +57,7 @@ setup(
     ],
 
     # What does your project relate to?
-    keywords='bioshake serial device',
+    keywords='zaber serial device',
 
     # You can just specify the packages manually here if your project is
     # simple. Or you can use find_packages().
