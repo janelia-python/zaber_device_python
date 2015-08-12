@@ -26,6 +26,7 @@ else:
 
 DEBUG = False
 BAUDRATE = 9600
+RESPONSE_LENGTH = 6
 
 class ZaberError(Exception):
     def __init__(self,value):
@@ -133,15 +134,22 @@ class ZaberDevice(object):
         return [arg0,arg1,arg2,arg3]
 
     def _response_to_data(self,response):
-        device = ord(response[0])
-        self._debug_print('response_device',device)
-        command = ord(response[1])
-        self._debug_print('response_command',command)
-        response = response[2:6]
-        # Reply_Data = 256^3 * Rpl_Byte 6 + 256^2 * Rpl_Byte_5 + 256 * Rpl_Byte_4 + Rpl_Byte_3
-        # If Rpl_Byte_6 > 127 then Reply_Data = Reply_Data - 256^4
-        data = pow(256,3)*ord(response[3]) + pow(256,2)*ord(response[2]) + 256*ord(response[1]) + ord(response[0])
-        return data
+        data_list = []
+        device_count = len(response) // RESPONSE_LENGTH
+        for device_n in range(device_count):
+            device = ord(response[0+device_n*RESPONSE_LENGTH])
+            self._debug_print('response_device',device)
+            command = ord(response[1+device_n*RESPONSE_LENGTH])
+            self._debug_print('response_command',command)
+            response = response[(2+device_n*RESPONSE_LENGTH):(6+device_n*RESPONSE_LENGTH)]
+            # Reply_Data = 256^3 * Rpl_Byte 6 + 256^2 * Rpl_Byte_5 + 256 * Rpl_Byte_4 + Rpl_Byte_3
+            # If Rpl_Byte_6 > 127 then Reply_Data = Reply_Data - 256^4
+            data = pow(256,3)*ord(response[3]) + pow(256,2)*ord(response[2]) + 256*ord(response[1]) + ord(response[0])
+            data_list.append(data)
+        if len(data_list) == 1:
+            return data_list[0]
+        else:
+            return data_list
 
     def _send_request(self,command,device=0,data=None):
 
