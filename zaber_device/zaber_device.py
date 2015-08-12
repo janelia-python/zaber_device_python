@@ -133,11 +133,11 @@ class ZaberDevice(object):
         return [arg0,arg1,arg2,arg3]
 
     def _response_to_data(self,response):
-        device = ord(respose[0])
+        device = ord(response[0])
         self._debug_print('response_device',device)
         command = ord(response[1])
         self._debug_print('response_command',command)
-        response = response[2:5]
+        response = response[2:6]
         # Reply_Data = 256^3 * Rpl_Byte 6 + 256^2 * Rpl_Byte_5 + 256 * Rpl_Byte_4 + Rpl_Byte_3
         # If Rpl_Byte_6 > 127 then Reply_Data = Reply_Data - 256^4
         data = pow(256,3)*ord(response[3]) + pow(256,2)*ord(response[2]) + 256*ord(response[1]) + ord(response[0])
@@ -163,7 +163,7 @@ class ZaberDevice(object):
         args_list = self._data_to_args_list(data)
         request = self._args_to_request(device,command,*args_list)
         self._debug_print('request', [ord(c) for c in request])
-        response = self._serial_device.write_read(request,use_readline=True,check_write_freq=True)
+        response = self._serial_device.write_read(request,use_readline=False,check_write_freq=True)
         self._debug_print('response', [ord(c) for c in response])
         data = self._response_to_data(response)
         self._debug_print('data', data)
@@ -269,8 +269,10 @@ def find_zaber_device_ports(baudrate=None, try_ports=None, debug=DEBUG):
         try:
             dev = ZaberDevice(port=port,baudrate=baudrate,debug=debug)
             try:
-                serial_number = dev.get_serial_number()
-                zaber_device_ports.append(port)
+                test_data = 123
+                echo_data = dev.echo_data(test_data)
+                if test_data == echo_data:
+                    zaber_device_ports.append(port)
             except:
                 continue
             dev.close()
