@@ -109,33 +109,52 @@ class ZaberDevice(object):
         request = request + '\r\n';
         return request
 
-    def _send_request(self,*args):
+    def _data_to_args_list(self,data):
+        if data is None:
+            return [0,0,0,0]
+        # Handle negative data
+        # If Cmd_Data < 0 then Cmd_Data = 256^4 + Cmd_Data
+        # Cmd_Byte_6 = Cmd_Data / 256^3
+        # Cmd_Data   = Cmd_Data - 256^3 * Cmd_Byte_6
+        # Cmd_Byte_5 = Cmd_Data / 256^2
+        # Cmd_Data   = Cmd_Data - 256^2 * Cmd_Byte_5
+        # Cmd_Byte_4 = Cmd_Data / 256
+        # Cmd_Data   = Cmd_Data - 256   * Cmd_Byte_4
+        # Cmd_Byte 3 = Cmd_Data
+        if data < 0:
+            data += pow(256,4)
+        arg3 = data // pow(256,3)
+        data -= pow(256,3)*arg3
+        arg2 = data // pow(256,2)
+        data -= pow(256,2)*arg2
+        arg1 = data // 256
+        data -= 256*arg1
+        arg0 = data
+        return [arg0,arg1,arg2,arg3]
+
+    def _send_request(self,command,device=0,data=None):
 
         '''Sends request to device over serial port and
         returns number of bytes written'''
 
-        request = self._args_to_request(*args)
+        args_list = self._data_to_args_list(data)
+        request = self._args_to_request(device,command,*args_list)
         self._debug_print('request', request)
         bytes_written = self._serial_device.write_check_freq(request,delay_write=True)
+        self._debug_print('bytes_written', bytes_written)
         return bytes_written
 
-    def _send_request_get_response(self,*args):
+    def _send_request_get_response(self,command,device=0,data=None):
 
         '''Sends request to device over serial port and
         returns response'''
 
-        request = self._args_to_request(*args)
+        args_list = self._data_to_args_list(data)
+        request = self._args_to_request(device,command,*args_list)
         self._debug_print('request', request)
         response = self._serial_device.write_read(request,use_readline=True,check_write_freq=True)
-        response = response.replace('"','')
-        response_list = response.split()
-        if 'ES' in response_list[0]:
-            raise ZaberError('Syntax Error!')
-        elif 'ET' in response_list[0]:
-            raise ZaberError('Transmission Error!')
-        elif 'EL' in response_list[0]:
-            raise ZaberError('Logical Error!')
-        return response_list
+        self._debug_print('response', response)
+        return response
 
     def close(self):
         '''
@@ -146,126 +165,53 @@ class ZaberDevice(object):
     def get_port(self):
         return self._serial_device.port
 
-    def get_commands(self):
+    def reset(self,device=0):
         '''
-        Inquiry of all implemented MT-SICS commands.
+        Sets the device to its power-up condition.
         '''
-        response = self._send_request_get_response('I0')
-        if 'I' in response[1]:
-            raise ZaberError('The list cannot be sent at present as another operation is taking place.')
-        return response[2:]
+        self._send_request(0,device)
 
-    def get_mtsics_level(self):
+    def home(self,device=0):
         '''
-        Inquiry of MT-SICS level and MT-SICS versions.
+        Moves to the home position and resets the device's internal position.
         '''
-        response = self._send_request_get_response('I1')
-        if 'I' in response[1]:
-            raise ZaberError('Command understood, not executable at present.')
-        return response[2:]
+        self._send_request(1,device)
 
-    def get_balance_data(self):
+    def renumber(self):
         '''
-        Inquiry of balance data.
+        Assigns new numbers to all the devices in the order in which they are connected.
         '''
-        response = self._send_request_get_response('I2')
-        if 'I' in response[1]:
-            raise ZaberError('Command understood, not executable at present.')
-        return response[2:]
+        self._send_request(2,0)
 
-    def get_software_version(self):
+    def move_absolute(self,position,device=0):
         '''
-        Inquiry of balance SW version and type definition number.
+        Moves the device to the position specified in the Command Data in microsteps.
         '''
-        response = self._send_request_get_response('I3')
-        if 'I' in response[1]:
-            raise ZaberError('Command understood, not executable at present.')
-        return response[2:]
+        self._send_request(20,device,position)
 
-    def get_serial_number(self):
+    def move_relative(self,position,device=0):
         '''
-        Inquiry of serial number.
+        Moves the device by the positive or negative number of microsteps specified in the Command Data.
         '''
-        response = self._send_request_get_response('I4')
-        if 'I' in response[1]:
-            raise ZaberError('Command understood, not executable at present.')
-        return int(response[2])
+        self._send_request(21,device,position)
 
-    def get_software_id(self):
+    def get_device_id(self,device=0):
         '''
-        Inquiry of SW-Identification number.
+        Returns the id number for the type of device connected.
         '''
-        response = self._send_request_get_response('I5')
-        if 'I' in response[1]:
-            raise ZaberError('Command understood, not executable at present.')
-        return response[2]
+        response = self._send_request_get_response(50,device)
 
-    def get_weight_stable(self):
+    def echo_data(self,data,device=0):
         '''
-        Send the current stable net weight value.
+        Echoes back the same Command Data that was sent.
         '''
-        try:
-            response = self._send_request_get_response('S')
-            if 'I' in response[1]:
-                raise ZaberError('Command understood, not executable at present.')
-            elif '+' in response[1]:
-                raise ZaberError('Balance in overload range.')
-            elif '-' in response[1]:
-                raise ZaberError('Balance in underload range.')
-            response[2] = float(response[2])
-            return response[2:]
-        except:
-            pass
+        response = self._send_request_get_response(55,device,data)
 
-    def get_weight(self):
+    def get_current_position(self,device=0):
         '''
-        Send the current net weight value, irrespective of balance stability.
+        Returns the current absolute position of the device in microsteps.
         '''
-        response = self._send_request_get_response('SI')
-        if 'I' in response[1]:
-            raise ZaberError('Command understood, not executable at present.')
-        elif '+' in response[1]:
-            raise ZaberError('Balance in overload range.')
-        elif '-' in response[1]:
-            raise ZaberError('Balance in underload range.')
-        response.append(response[1])
-        response[2] = float(response[2])
-        return response[2:]
-
-    def zero_stable(self):
-        '''
-        Zero the balance.
-        '''
-        try:
-            response = self._send_request_get_response('Z')
-            if 'I' in response[1]:
-                raise ZaberError('Zero setting not performed (balance is currently executing another command, e.g. taring, or timeout as stability was not reached).')
-            elif '+' in response[1]:
-                raise ZaberError('Upper limit of zero setting range exceeded.')
-            elif '-' in response[1]:
-                raise ZaberError('Lower limit of zero setting range exceeded.')
-            return True
-        except:
-            return False
-
-    def zero(self):
-        '''
-        Zero the balance immediately regardless the stability of the balance.
-        '''
-        response = self._send_request_get_response('ZI')
-        if 'I' in response[1]:
-            raise ZaberError('Zero setting not performed (balance is currently executing another command, e.g. taring, or timeout as stability was not reached).')
-        elif '+' in response[1]:
-            raise ZaberError('Upper limit of zero setting range exceeded.')
-        elif '-' in response[1]:
-            raise ZaberError('Lower limit of zero setting range exceeded.')
-        return response[1]
-
-    def reset(self):
-        '''
-        Resets the balance to the condition found after switching on, but without a zero setting being performed.
-        '''
-        self._send_request('@')
+        response = self._send_request_get_response(60,device)
 
 
 class ZaberDevices(list):
