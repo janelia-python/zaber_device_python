@@ -99,7 +99,8 @@ class ZaberDevice(object):
 
     def _debug_print(self, *args):
         if self.debug:
-            print(*args)
+            args_ordinal = [ord(c) for c in args]
+            print(*arg_ordinal)
 
     def _exit_zaber_device(self):
         pass
@@ -200,18 +201,21 @@ class ZaberDevice(object):
         Returns the id number for the type of device connected.
         '''
         response = self._send_request_get_response(50,device)
+        return response
 
     def echo_data(self,data,device=0):
         '''
         Echoes back the same Command Data that was sent.
         '''
         response = self._send_request_get_response(55,device,data)
+        return response
 
     def get_current_position(self,device=0):
         '''
         Returns the current absolute position of the device in microsteps.
         '''
         response = self._send_request_get_response(60,device)
+        return response
 
 
 class ZaberDevices(list):
