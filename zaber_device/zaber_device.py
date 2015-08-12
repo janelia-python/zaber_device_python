@@ -46,22 +46,18 @@ class ZaberDevice(object):
     dev = ZaberDevice('/dev/ttyUSB0') # Linux
     dev = ZaberDevice('/dev/tty.usbmodem262471') # Mac OS X
     dev = ZaberDevice('COM3') # Windows
-    dev.get_serial_number()
-    1126493049
-    dev.get_balance_data()
-    ['XS204', 'Excellence', '220.0090', 'g']
-    dev.get_weight_stable()
-    [-0.0082, 'g'] #if weight is stable
-    None  #if weight is dynamic
-    dev.get_weight()
-    [-0.6800, 'g', 'S'] #if weight is stable
-    [-0.6800, 'g', 'D'] #if weight is dynamic
-    dev.zero_stable()
-    True  #zeros if weight is stable
-    False  #does not zero if weight is not stable
-    dev.zero()
-    'S'   #zeros if weight is stable
-    'D'   #zeros if weight is dynamic
+    dev.get_actuator_count()
+    2
+    dev.get_current_position()
+    [130000, 160000]
+    dev.home()
+    dev.get_current_position()
+    [0, 0]
+    dev.move_relative(10000)
+    dev.get_current_position()
+    [10000, 10000]
+    dev.move_relative(10000,0)
+    dev.get_current_position()
     '''
     _TIMEOUT = 0.05
     _WRITE_WRITE_DELAY = 0.05
@@ -135,41 +131,45 @@ class ZaberDevice(object):
 
     def _response_to_data(self,response):
         data_list = []
-        device_count = len(response) // RESPONSE_LENGTH
-        for device_n in range(device_count):
-            device = ord(response[0+device_n*RESPONSE_LENGTH])
-            self._debug_print('response_device',device)
-            command = ord(response[1+device_n*RESPONSE_LENGTH])
+        self._debug_print('len(response)',len(response))
+        actuator_count = len(response) // RESPONSE_LENGTH
+        self._debug_print('actuator_count',actuator_count)
+        for actuator_n in range(actuator_count):
+            actuator = ord(response[0+actuator_n*RESPONSE_LENGTH])
+            self._debug_print('response_actuator',actuator)
+            command = ord(response[1+actuator_n*RESPONSE_LENGTH])
             self._debug_print('response_command',command)
-            response = response[(2+device_n*RESPONSE_LENGTH):(6+device_n*RESPONSE_LENGTH)]
+            response_copy = response[(2+actuator_n*RESPONSE_LENGTH):(6+actuator_n*RESPONSE_LENGTH)]
             # Reply_Data = 256^3 * Rpl_Byte 6 + 256^2 * Rpl_Byte_5 + 256 * Rpl_Byte_4 + Rpl_Byte_3
             # If Rpl_Byte_6 > 127 then Reply_Data = Reply_Data - 256^4
-            data = pow(256,3)*ord(response[3]) + pow(256,2)*ord(response[2]) + 256*ord(response[1]) + ord(response[0])
+            data = pow(256,3)*ord(response_copy[3]) + pow(256,2)*ord(response_copy[2]) + 256*ord(response_copy[1]) + ord(response_copy[0])
             data_list.append(data)
         if len(data_list) == 1:
             return data_list[0]
         else:
             return data_list
 
-    def _send_request(self,command,device=0,data=None):
+    def _send_request(self,command,actuator=-1,data=None):
 
         '''Sends request to device over serial port and
         returns number of bytes written'''
 
+        actuator += 1
         args_list = self._data_to_args_list(data)
-        request = self._args_to_request(device,command,*args_list)
+        request = self._args_to_request(actuator,command,*args_list)
         self._debug_print('request', [ord(c) for c in request])
         bytes_written = self._serial_device.write_check_freq(request,delay_write=True)
         self._debug_print('bytes_written', bytes_written)
         return bytes_written
 
-    def _send_request_get_response(self,command,device=0,data=None):
+    def _send_request_get_response(self,command,actuator=-1,data=None):
 
         '''Sends request to device over serial port and
         returns response'''
 
+        actuator += 1
         args_list = self._data_to_args_list(data)
-        request = self._args_to_request(device,command,*args_list)
+        request = self._args_to_request(actuator,command,*args_list)
         self._debug_print('request', [ord(c) for c in request])
         response = self._serial_device.write_read(request,use_readline=False,check_write_freq=True)
         self._debug_print('response', [ord(c) for c in response])
@@ -186,62 +186,78 @@ class ZaberDevice(object):
     def get_port(self):
         return self._serial_device.port
 
-    def reset(self,device=0):
+    def reset(self,actuator=-1):
         '''
-        Sets the device to its power-up condition.
+        Sets the actuator to its power-up condition.
         '''
-        self._send_request(0,device)
+        self._send_request(0,actuator)
 
-    def home(self,device=0):
+    def home(self,actuator=-1):
         '''
-        Moves to the home position and resets the device's internal position.
+        Moves to the home position and resets the actuator's internal position.
         '''
-        self._send_request(1,device)
+        self._send_request(1,actuator)
 
     def renumber(self):
         '''
-        Assigns new numbers to all the devices in the order in which they are connected.
+        Assigns new numbers to all the actuators in the order in which they are connected.
         '''
         self._send_request(2,0)
 
-    def move_absolute(self,position,device=0):
+    def move_absolute(self,position,actuator=-1):
         '''
-        Moves the device to the position specified in the Command Data in microsteps.
+        Moves the actuator to the position specified in the Command Data in microsteps.
         '''
-        self._send_request(20,device,position)
+        self._send_request(20,actuator,position)
 
-    def move_relative(self,position,device=0):
+    def get_actuator_count(self):
         '''
-        Moves the device by the positive or negative number of microsteps specified in the Command Data.
+        Return the number of Zaber actuators connected in a chain.
         '''
-        self._send_request(21,device,position)
+        data = 123
+        response = self._send_request_get_response(55,-1,data)
+        try:
+            actuator_count = len(response)
+        except TypeError:
+            actuator_count = 1
+        return actuator_count
 
-    def get_device_id(self,device=0):
+    def move_relative(self,position,actuator=-1):
         '''
-        Returns the id number for the type of device connected.
+        Moves the actuator by the positive or negative number of microsteps specified in the Command Data.
         '''
-        response = self._send_request_get_response(50,device)
+        self._send_request(21,actuator,position)
+
+    def get_actuator_id(self,actuator=-1):
+        '''
+        Returns the id number for the type of actuator connected.
+        '''
+        response = self._send_request_get_response(50,actuator)
         return response
 
-    def get_status(self,device=0):
+    def get_status(self,actuator=-1):
         '''
-        Returns the current status of the device.
+        Returns the current status of the actuator.
         '''
-        response = self._send_request_get_response(54,device)
+        response = self._send_request_get_response(54,actuator)
         return response
 
-    def echo_data(self,data,device=0):
+    def echo_data(self,data,actuator=-1):
         '''
         Echoes back the same Command Data that was sent.
         '''
-        response = self._send_request_get_response(55,device,data)
+        response = self._send_request_get_response(55,actuator,data)
+        try:
+            response = response[0]
+        except TypeError:
+            pass
         return response
 
-    def get_current_position(self,device=0):
+    def get_current_position(self,actuator=-1):
         '''
-        Returns the current absolute position of the device in microsteps.
+        Returns the current absolute position of the actuator in microsteps.
         '''
-        response = self._send_request_get_response(60,device)
+        response = self._send_request_get_response(60,actuator)
         return response
 
 
