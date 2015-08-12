@@ -132,6 +132,17 @@ class ZaberDevice(object):
         arg0 = data
         return [arg0,arg1,arg2,arg3]
 
+    def _response_to_data(self,response):
+        device = ord(respose[0])
+        self._debug_print('response_device',device)
+        command = ord(response[1])
+        self._debug_print('response_command',command)
+        response = response[2:5]
+        # Reply_Data = 256^3 * Rpl_Byte 6 + 256^2 * Rpl_Byte_5 + 256 * Rpl_Byte_4 + Rpl_Byte_3
+        # If Rpl_Byte_6 > 127 then Reply_Data = Reply_Data - 256^4
+        data = pow(256,3)*ord(response[3]) + pow(256,2)*ord(response[2]) + 256*ord(response[1]) + ord(response[0])
+        return data
+
     def _send_request(self,command,device=0,data=None):
 
         '''Sends request to device over serial port and
@@ -154,7 +165,9 @@ class ZaberDevice(object):
         self._debug_print('request', [ord(c) for c in request])
         response = self._serial_device.write_read(request,use_readline=True,check_write_freq=True)
         self._debug_print('response', [ord(c) for c in response])
-        return response
+        data = self._response_to_data(response)
+        self._debug_print('data', data)
+        return data
 
     def close(self):
         '''
@@ -200,6 +213,13 @@ class ZaberDevice(object):
         Returns the id number for the type of device connected.
         '''
         response = self._send_request_get_response(50,device)
+        return response
+
+    def get_status(self,device=0):
+        '''
+        Returns the current status of the device.
+        '''
+        response = self._send_request_get_response(54,device)
         return response
 
     def echo_data(self,data,device=0):
