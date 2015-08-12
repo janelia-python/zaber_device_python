@@ -72,6 +72,7 @@ class ZaberDevice(object):
         else:
             kwargs.update({'debug': DEBUG})
             self.debug = DEBUG
+        kwargs['debug'] = False
         if 'try_ports' in kwargs:
             try_ports = kwargs.pop('try_ports')
         else:
@@ -99,15 +100,13 @@ class ZaberDevice(object):
 
     def _debug_print(self, *args):
         if self.debug:
-            args_ordinal = [ord(c) for c in args]
-            print(*arg_ordinal)
+            print(*args)
 
     def _exit_zaber_device(self):
         pass
 
     def _args_to_request(self,*args):
         request = ''.join(map(chr,args))
-        request = request + '\r\n';
         return request
 
     def _data_to_args_list(self,data):
@@ -140,7 +139,7 @@ class ZaberDevice(object):
 
         args_list = self._data_to_args_list(data)
         request = self._args_to_request(device,command,*args_list)
-        self._debug_print('request', request)
+        self._debug_print('request', [ord(c) for c in request])
         bytes_written = self._serial_device.write_check_freq(request,delay_write=True)
         self._debug_print('bytes_written', bytes_written)
         return bytes_written
@@ -152,9 +151,9 @@ class ZaberDevice(object):
 
         args_list = self._data_to_args_list(data)
         request = self._args_to_request(device,command,*args_list)
-        self._debug_print('request', request)
+        self._debug_print('request', [ord(c) for c in request])
         response = self._serial_device.write_read(request,use_readline=True,check_write_freq=True)
-        self._debug_print('response', response)
+        self._debug_print('response', [ord(c) for c in response])
         return response
 
     def close(self):
