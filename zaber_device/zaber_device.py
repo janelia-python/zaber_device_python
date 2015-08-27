@@ -27,6 +27,14 @@ else:
 DEBUG = False
 BAUDRATE = 9600
 RESPONSE_LENGTH = 6
+CURRENT_MIN = 1
+CURRENT_MAX = 100
+ZABER_CURRENT_MIN = 127
+ZABER_CURRENT_MAX = 10
+ALIAS_MIN = 0
+ALIAS_MAX = 98
+POSITION_ADDRESS_MIN = 0
+POSITION_ADDRESS_MAX = 15
 
 class ZaberError(Exception):
     def __init__(self,value):
@@ -48,16 +56,16 @@ class ZaberDevice(object):
     dev = ZaberDevice('COM3') # Windows
     dev.get_actuator_count()
     2
-    dev.get_current_position()
+    dev.get_position()
     [130000, 160000]
     dev.home()
-    dev.get_current_position()
+    dev.get_position()
     [0, 0]
     dev.move_relative(10000)
-    dev.get_current_position()
+    dev.get_position()
     [10000, 10000]
     dev.move_relative(10000,0)
-    dev.get_current_position()
+    dev.get_position()
     '''
     _TIMEOUT = 0.05
     _WRITE_WRITE_DELAY = 0.05
@@ -84,8 +92,8 @@ class ZaberDevice(object):
             kwargs.update({'write_write_delay': self._WRITE_WRITE_DELAY})
         if ('port' not in kwargs) or (kwargs['port'] is None):
             port =  find_zaber_device_port(baudrate=kwargs['baudrate'],
-                                                    try_ports=try_ports,
-                                                    debug=kwargs['debug'])
+                                           try_ports=try_ports,
+                                           debug=kwargs['debug'])
             kwargs.update({'port': port})
 
         t_start = time.time()
@@ -130,12 +138,12 @@ class ZaberDevice(object):
         return [arg0,arg1,arg2,arg3]
 
     def _response_to_data(self,response):
-        data_list = []
         self._debug_print('len(response)',len(response))
         actuator_count = len(response) // RESPONSE_LENGTH
         self._debug_print('actuator_count',actuator_count)
+        data_list = [None for d in range(actuator_count)]
         for actuator_n in range(actuator_count):
-            actuator = ord(response[0+actuator_n*RESPONSE_LENGTH])
+            actuator = ord(response[0+actuator_n*RESPONSE_LENGTH]) - 1
             self._debug_print('response_actuator',actuator)
             command = ord(response[1+actuator_n*RESPONSE_LENGTH])
             self._debug_print('response_command',command)
@@ -143,18 +151,20 @@ class ZaberDevice(object):
             # Reply_Data = 256^3 * Rpl_Byte 6 + 256^2 * Rpl_Byte_5 + 256 * Rpl_Byte_4 + Rpl_Byte_3
             # If Rpl_Byte_6 > 127 then Reply_Data = Reply_Data - 256^4
             data = pow(256,3)*ord(response_copy[3]) + pow(256,2)*ord(response_copy[2]) + 256*ord(response_copy[1]) + ord(response_copy[0])
-            data_list.append(data)
-        if len(data_list) == 1:
-            return data_list[0]
-        else:
-            return data_list
+            data_list[actuator] = data
+        return data_list
 
-    def _send_request(self,command,actuator=-1,data=None):
+    def _send_request(self,command,actuator=None,data=None):
 
         '''Sends request to device over serial port and
         returns number of bytes written'''
 
-        actuator += 1
+        if actuator is None:
+            actuator = 0
+        elif actuator < 0:
+            raise ZaberError('actuator must be >= 0')
+        else:
+            actuator += 1
         args_list = self._data_to_args_list(data)
         request = self._args_to_request(actuator,command,*args_list)
         self._debug_print('request', [ord(c) for c in request])
@@ -162,12 +172,17 @@ class ZaberDevice(object):
         self._debug_print('bytes_written', bytes_written)
         return bytes_written
 
-    def _send_request_get_response(self,command,actuator=-1,data=None):
+    def _send_request_get_response(self,command,actuator=None,data=None):
 
         '''Sends request to device over serial port and
         returns response'''
 
-        actuator += 1
+        if actuator is None:
+            actuator = 0
+        elif actuator < 0:
+            raise ZaberError('actuator must be >= 0')
+        else:
+            actuator += 1
         args_list = self._data_to_args_list(data)
         request = self._args_to_request(actuator,command,*args_list)
         self._debug_print('request', [ord(c) for c in request])
@@ -186,13 +201,13 @@ class ZaberDevice(object):
     def get_port(self):
         return self._serial_device.port
 
-    def reset(self,actuator=-1):
+    def reset(self,actuator=None):
         '''
         Sets the actuator to its power-up condition.
         '''
         self._send_request(0,actuator)
 
-    def home(self,actuator=-1):
+    def home(self,actuator=None):
         '''
         Moves to the home position and resets the actuator's internal position.
         '''
@@ -204,9 +219,35 @@ class ZaberDevice(object):
         '''
         self._send_request(2,0)
 
-    def move_absolute(self,position,actuator=-1):
+    def store_position(self,address,actuator=None):
         '''
-        Moves the actuator to the position specified in the Command Data in microsteps.
+        Saves the current absolute position of the actuator into the address.
+        '''
+        if (address < POSITION_ADDRESS_MIN) or (address > POSITION_ADDRESS_MAX):
+            raise ZaberError('address must be between {0} and {1}'.format(POSITION_ADDRESS_MIN,POSITION_ADDRESS_MAX))
+        self._send_request(16,actuator,address)
+
+    def get_stored_position(self,address):
+        '''
+        Gets the current absolute position of the actuator into the address.
+        '''
+        if (address < POSITION_ADDRESS_MIN) or (address > POSITION_ADDRESS_MAX):
+            raise ZaberError('address must be between {0} and {1}'.format(POSITION_ADDRESS_MIN,POSITION_ADDRESS_MAX))
+        actuator = None
+        response = self._send_request_get_response(17,actuator,address)
+        return response
+
+    def move_to_stored_position(self,address,actuator=None):
+        '''
+        Moves the actuator to the position stored in the specified address.
+        '''
+        if (address < POSITION_ADDRESS_MIN) or (address > POSITION_ADDRESS_MAX):
+            raise ZaberError('address must be between {0} and {1}'.format(POSITION_ADDRESS_MIN,POSITION_ADDRESS_MAX))
+        self._send_request(18,actuator,address)
+
+    def move_absolute(self,position,actuator=None):
+        '''
+        Moves the actuator to the position specified in microsteps.
         '''
         self._send_request(20,actuator,position)
 
@@ -215,37 +256,196 @@ class ZaberDevice(object):
         Return the number of Zaber actuators connected in a chain.
         '''
         data = 123
-        response = self._send_request_get_response(55,-1,data)
+        actuator = None
+        response = self._send_request_get_response(55,actuator,data)
         try:
             actuator_count = len(response)
         except TypeError:
             actuator_count = 1
         return actuator_count
 
-    def move_relative(self,position,actuator=-1):
+    def move_relative(self,position,actuator=None):
         '''
-        Moves the actuator by the positive or negative number of microsteps specified in the Command Data.
+        Moves the actuator by the positive or negative number of microsteps specified.
         '''
         self._send_request(21,actuator,position)
 
-    def get_actuator_id(self,actuator=-1):
+    def move_at_speed(self,speed,actuator=None):
+        '''
+        Moves the actuator at a constant speed until stop is commanded or a limit is reached.
+        '''
+        self._send_request(22,actuator,speed)
+
+    def stop(self,actuator=None):
+        '''
+        Stops the device from moving by preempting any move instruction.
+        '''
+        self._send_request(23,actuator)
+
+    def restore_settings(self):
+        '''
+        Restores the device settings to the factory defaults.
+        '''
+        self._send_request(36,None)
+
+    def get_actuator_id(self):
         '''
         Returns the id number for the type of actuator connected.
         '''
+        actuator = None
         response = self._send_request_get_response(50,actuator)
         return response
 
-    def get_status(self,actuator=-1):
+    def _return_setting(self,setting,actuator):
         '''
-        Returns the current status of the actuator.
+        Returns the current value of the specified setting.
         '''
-        response = self._send_request_get_response(54,actuator)
+        response = self._send_request_get_response(53,actuator,setting)
         return response
 
-    def echo_data(self,data,actuator=-1):
+    def _get_microstep_resolution(self):
+        '''
+        Returns the number of microsteps per step.
+        '''
+        actuator = None
+        response = self._return_setting(37,actuator)
+        return response
+
+    def set_running_current(self,current,actuator=None):
+        '''
+        Sets the desired current to be used when the actuator is moving. (1-100)
+        '''
+        if (current < CURRENT_MIN) or (current > CURRENT_MAX):
+            raise ZaberError('current must be between {0} and {1}'.format(CURRENT_MIN,CURRENT_MAX))
+        zaber_current = self._map(current,CURRENT_MIN,CURRENT_MAX,ZABER_CURRENT_MIN,ZABER_CURRENT_MAX)
+        self._send_request(38,actuator,zaber_current)
+
+    def get_running_current(self):
+        '''
+        Returns the desired current to be used when the actuator is moving. (1-100)
+        '''
+        actuator = None
+        response = self._return_setting(38,actuator)
+        response = self._map_list(response,ZABER_CURRENT_MIN,ZABER_CURRENT_MAX,CURRENT_MIN,CURRENT_MAX)
+        return response
+
+    def set_hold_current(self,current,actuator=None):
+        '''
+        Sets the desired current to be used when the actuator is holding its position. (1-100)
+        '''
+        if (current < CURRENT_MIN) or (current > CURRENT_MAX):
+            raise ZaberError('current must be between {0} and {1}'.format(CURRENT_MIN,CURRENT_MAX))
+        zaber_current = self._map(current,CURRENT_MIN,CURRENT_MAX,ZABER_CURRENT_MIN,ZABER_CURRENT_MAX)
+        self._send_request(39,actuator,zaber_current)
+
+    def get_hold_current(self):
+        '''
+        Returns the desired current to be used when the actuator is holding its position. (1-100)
+        '''
+        actuator = None
+        response = self._return_setting(39,actuator)
+        response = self._map_list(response,ZABER_CURRENT_MIN,ZABER_CURRENT_MAX,CURRENT_MIN,CURRENT_MAX)
+        return response
+
+    def _get_actuator_mode(self):
+        '''
+        Returns the mode for the given actuator.
+        '''
+        actuator = None
+        response = self._return_setting(40,actuator)
+        response = ["{0:b}".format(r) for r in response]
+        return response
+
+    def set_home_speed(self,speed,actuator=None):
+        '''
+        Sets the speed at which the actuator moves when using the "Home" command.
+        '''
+        self._send_request(41,actuator,speed)
+
+    def get_home_speed(self):
+        '''
+        Returns the speed at which the actuator moves when using the "Home" command.
+        '''
+        actuator = None
+        response = self._return_setting(41,actuator)
+        return response
+
+    def set_target_speed(self,speed,actuator=None):
+        '''
+        Sets the speed at which the actuator moves when using "move_absolute" or "move_relative" commands.
+        '''
+        self._send_request(42,actuator,speed)
+
+    def get_target_speed(self):
+        '''
+        Returns the speed at which the actuator moves when using "move_absolute" or "move_relative" commands.
+        '''
+        actuator = None
+        response = self._return_setting(42,actuator)
+        return response
+
+    def set_acceleration(self,acceleration,actuator=None):
+        '''
+        Sets the acceleration used by the movement commands.
+        '''
+        self._send_request(43,actuator,acceleration)
+
+    def get_acceleration(self):
+        '''
+        Returns the acceleration used by the movement commands.
+        '''
+        actuator = None
+        response = self._return_setting(43,actuator)
+        return response
+
+    def get_alias(self):
+        '''
+        Returns the alternate device numbers for the actuators.
+        '''
+        actuator = None
+        response = self._return_setting(48,actuator)
+        response_corrected = []
+        for r in response:
+            if r > 0:
+                response_corrected.append(r-1)
+            else:
+                response_corrected.append(None)
+        return response_corrected
+
+    def set_alias(self,actuator,alias):
+        '''
+        Sets the alternate device numbers for the actuator.
+        '''
+        actuator_count = self.get_actuator_count
+        if (actuator < 0) or (actuator > actuator_count):
+            raise ZaberError('actuator must be between {0} and {1}'.format(0,actuator_count))
+        if (alias < ALIAS_MIN) or (alias > ALIAS_MAX):
+            raise ZaberError('alias must be between {0} and {1}'.format(ALIAS_MIN,ALIAS_MAX))
+        response = self._send_request_get_response(48,actuator,alias+1)
+        response -= 1
+        return response
+
+    def remove_alias(self,actuator=None):
+        '''
+        Removes the alternate device number for the actuator.
+        '''
+        response = self._send_request_get_response(48,actuator,0)
+        return response
+
+    def moving(self):
+        '''
+        Returns True if actuator is moving, False otherwise
+        '''
+        actuator = None
+        response = self._send_request_get_response(54,actuator)
+        response = [bool(r) for r in response]
+        return response
+
+    def echo_data(self,data):
         '''
         Echoes back the same Command Data that was sent.
         '''
+        actuator = None
         response = self._send_request_get_response(55,actuator,data)
         try:
             response = response[0]
@@ -253,12 +453,19 @@ class ZaberDevice(object):
             pass
         return response
 
-    def get_current_position(self,actuator=-1):
+    def get_position(self):
         '''
         Returns the current absolute position of the actuator in microsteps.
         '''
+        actuator = None
         response = self._send_request_get_response(60,actuator)
         return response
+
+    def _map_list(self,x_list,in_min,in_max,out_min,out_max):
+        return [int((x-in_min)*(out_max-out_min)/(in_max-in_min)+out_min) for x in x_list]
+
+    def _map(self,x,in_min,in_max,out_min,out_max):
+        return int((x-in_min)*(out_max-out_min)/(in_max-in_min)+out_min)
 
 
 class ZaberDevices(list):
@@ -282,7 +489,11 @@ class ZaberDevices(list):
             self.append(dev)
 
 
-def find_zaber_device_ports(baudrate=None, try_ports=None, debug=DEBUG):
+def find_zaber_device_ports(baudrate=None,
+                            try_ports=None,
+                            debug=DEBUG,
+                            *args,
+                            **kwargs):
     serial_device_ports = find_serial_device_ports(try_ports=try_ports, debug=debug)
     os_type = platform.system()
     if os_type == 'Darwin':
@@ -304,10 +515,12 @@ def find_zaber_device_ports(baudrate=None, try_ports=None, debug=DEBUG):
             pass
     return zaber_device_ports
 
-def find_zaber_device_port(baudrate=None, model_number=None, serial_number=None, try_ports=None, debug=DEBUG):
+def find_zaber_device_port(baudrate=None,
+                           try_ports=None,
+                           debug=DEBUG):
     zaber_device_ports = find_zaber_device_ports(baudrate=baudrate,
-                                                                   try_ports=try_ports,
-                                                                   debug=debug)
+                                                 try_ports=try_ports,
+                                                 debug=debug)
     if len(zaber_device_ports) == 1:
         return zaber_device_ports[0]
     elif len(zaber_device_ports) == 0:
