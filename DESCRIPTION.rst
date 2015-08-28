@@ -1,8 +1,8 @@
 zaber_device_python
-======================
+===================
 
-This Python package (zaber\_device) creates a class named ZaberDevice,
-which contains an instance of serial\_device2.SerialDevice and adds
+This Python package (zaber_device) creates a class named ZaberDevice,
+which contains an instance of serial_device2.SerialDevice and adds
 methods to it to interface to Zaber motorized linear slides.
 
 Authors::
@@ -15,27 +15,40 @@ License::
 
 Example Usage::
 
-    from zaber_device import ZaberDevice
     dev = ZaberDevice() # Automatically finds device if one available
     dev = ZaberDevice('/dev/ttyUSB0') # Linux
     dev = ZaberDevice('/dev/tty.usbmodem262471') # Mac OS X
     dev = ZaberDevice('COM3') # Windows
-    dev.get_serial_number()
-    1126493049
-    dev.get_balance_data()
-    ['XS204', 'Excellence', '220.0090', 'g']
-    dev.get_weight_stable()
-    [-0.0082, 'g'] #if weight is stable
-    None  #if weight is dynamic
-    dev.get_weight()
-    [-0.6800, 'g', 'S'] #if weight is stable
-    [-0.6800, 'g', 'D'] #if weight is dynamic
-    dev.zero_stable()
-    True  #zeros if weight is stable
-    False  #does not zero if weight is not stable
-    dev.zero()
-    'S'   #zeros if weight is stable
-    'D'   #zeros if weight is dynamic
+    dev.get_actuator_count()
+    2
+    dev.get_position()
+    [130000, 160000]
+    dev.home()
+    dev.moving()
+    [True, True]
+    dev.moving()
+    [False, False]
+    dev.get_position()
+    [0, 0]
+    dev.move_relative(10000)
+    dev.get_position()
+    [10000, 10000]
+    dev.move_relative(10000,0)
+    dev.moving()
+    [True, False]
+    dev.get_position()
+    [20000, 10000]
+    dev.store_position(0)
+    dev.get_stored_position(0)
+    [20000, 10000]
+    dev.move_at_speed(1000)
+    dev.stop()
+    dev.get_position()
+    [61679, 51679]
+    dev.move_to_stored_position(0)
+    dev.get_position()
+    [20000, 10000]
     devs = ZaberDevices()  # Automatically finds all available devices
-    dev = devs[0]
+    devs.keys()
+    dev = devs[serial_number]
 

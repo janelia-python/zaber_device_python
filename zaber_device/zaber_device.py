@@ -35,6 +35,7 @@ ALIAS_MIN = 0
 ALIAS_MAX = 98
 POSITION_ADDRESS_MIN = 0
 POSITION_ADDRESS_MAX = 15
+SERIAL_NUMBER_ADDRESS = 123
 
 class ZaberError(Exception):
     def __init__(self,value):
@@ -59,13 +60,30 @@ class ZaberDevice(object):
     dev.get_position()
     [130000, 160000]
     dev.home()
+    dev.moving()
+    [True, True]
+    dev.moving()
+    [False, False]
     dev.get_position()
     [0, 0]
     dev.move_relative(10000)
     dev.get_position()
     [10000, 10000]
     dev.move_relative(10000,0)
+    dev.moving()
+    [True, False]
     dev.get_position()
+    [20000, 10000]
+    dev.store_position(0)
+    dev.get_stored_position(0)
+    [20000, 10000]
+    dev.move_at_speed(1000)
+    dev.stop()
+    dev.get_position()
+    [61679, 51679]
+    dev.move_to_stored_position(0)
+    dev.get_position()
+    [20000, 10000]
     '''
     _TIMEOUT = 0.05
     _WRITE_WRITE_DELAY = 0.05
@@ -461,6 +479,33 @@ class ZaberDevice(object):
         response = self._send_request_get_response(60,actuator)
         return response
 
+    def set_serial_number(self,serial_number):
+        '''
+        Sets serial number. Useful for talking communicating with ZaberDevices on multiple serial ports.
+        '''
+        actuator = None
+        # write
+        data = 1 << 7
+        address = SERIAL_NUMBER_ADDRESS
+        data += address
+        serial_number = serial_number << 8
+        data += serial_number
+        self._send_request(35,actuator,data)
+
+    def get_serial_number(self):
+        '''
+        Gets serial number. Useful for talking communicating with ZaberDevices on multiple serial ports.
+        '''
+        actuator = None
+        # read
+        data = 0 << 7
+        address = SERIAL_NUMBER_ADDRESS
+        data += address
+        response = self._send_request_get_response(35,actuator,data)
+        response = response[0]
+        response = response >> 8
+        return response
+
     def _map_list(self,x_list,in_min,in_max,out_min,out_max):
         return [int((x-in_min)*(out_max-out_min)/(in_max-in_min)+out_min) for x in x_list]
 
@@ -468,15 +513,19 @@ class ZaberDevice(object):
         return int((x-in_min)*(out_max-out_min)/(in_max-in_min)+out_min)
 
 
-class ZaberDevices(list):
+class ZaberDevices(dict):
     '''
-    ZaberDevices inherits from list and automatically populates it with
-    ZaberDevices on all available serial ports.
-
+    ZaberDevices inherits from dict and automatically populates it with
+    ZaberDevices on all available serial ports. Access each individual
+    device with one key, the device serial_number. If you
+    want to connect multiple ZaberDevices with the same name at the
+    same time, first make sure they have unique serial_numbers by
+    connecting each device one by one and using the set_serial_number
+    method on each device.
     Example Usage:
-
     devs = ZaberDevices()  # Automatically finds all available devices
-    dev = devs[0]
+    devs.keys()
+    dev = devs[serial_number]
     '''
     def __init__(self,*args,**kwargs):
         if ('use_ports' not in kwargs) or (kwargs['use_ports'] is None):
@@ -485,12 +534,18 @@ class ZaberDevices(list):
             zaber_device_ports = use_ports
 
         for port in zaber_device_ports:
-            dev = ZaberDevice(*args,**kwargs)
-            self.append(dev)
+            kwargs.update({'port': port})
+            self._add_device(*args,**kwargs)
+
+    def _add_device(self,*args,**kwargs):
+        dev = ZaberDevice(*args,**kwargs)
+        serial_number = dev.get_serial_number()
+        self[serial_number] = dev
 
 
 def find_zaber_device_ports(baudrate=None,
                             try_ports=None,
+                            serial_number=None,
                             debug=DEBUG,
                             *args,
                             **kwargs):
@@ -499,7 +554,7 @@ def find_zaber_device_ports(baudrate=None,
     if os_type == 'Darwin':
         serial_device_ports = [x for x in serial_device_ports if 'tty.usbmodem' in x or 'tty.usbserial' in x]
 
-    zaber_device_ports = []
+    zaber_device_ports = {}
     for port in serial_device_ports:
         try:
             dev = ZaberDevice(port=port,baudrate=baudrate,debug=debug)
@@ -507,7 +562,9 @@ def find_zaber_device_ports(baudrate=None,
                 test_data = 123
                 echo_data = dev.echo_data(test_data)
                 if test_data == echo_data:
-                    zaber_device_ports.append(port)
+                    s_n = dev.get_serial_number()
+                    if (serial_number is None) or (s_n == serial_number):
+                        zaber_device_ports[port] = {'serial_number':s_n}
             except:
                 continue
             dev.close()
@@ -517,19 +574,21 @@ def find_zaber_device_ports(baudrate=None,
 
 def find_zaber_device_port(baudrate=None,
                            try_ports=None,
+                           serial_number=None,
                            debug=DEBUG):
     zaber_device_ports = find_zaber_device_ports(baudrate=baudrate,
                                                  try_ports=try_ports,
+                                                 serial_number=serial_number,
                                                  debug=debug)
     if len(zaber_device_ports) == 1:
-        return zaber_device_ports[0]
+        return zaber_device_ports.keys()[0]
     elif len(zaber_device_ports) == 0:
         serial_device_ports = find_serial_device_ports(try_ports)
         err_string = 'Could not find any Zaber devices. Check connections and permissions.\n'
         err_string += 'Tried ports: ' + str(serial_device_ports)
         raise RuntimeError(err_string)
     else:
-        err_string = 'Found more than one Zaber device. Specify port or model_number and/or serial_number.\n'
+        err_string = 'Found more than one Zaber device. Specify port or serial_number.\n'
         err_string += 'Matching ports: ' + str(zaber_device_ports)
         raise RuntimeError(err_string)
 
