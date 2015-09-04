@@ -439,9 +439,7 @@ class ZaberDevice(object):
             raise ZaberError('actuator must be between {0} and {1}'.format(0,actuator_count))
         if (alias < ALIAS_MIN) or (alias > ALIAS_MAX):
             raise ZaberError('alias must be between {0} and {1}'.format(ALIAS_MIN,ALIAS_MAX))
-        response = self._send_request_get_response(48,actuator,alias+1)
-        response -= 1
-        return response
+        self._send_request(48,actuator,alias+1)
 
     def remove_alias(self,actuator=None):
         '''
