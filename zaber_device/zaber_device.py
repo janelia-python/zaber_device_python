@@ -207,6 +207,9 @@ class ZaberDevice(object):
         args_list = self._data_to_args_list(data)
         request = self._args_to_request(actuator,command,*args_list)
         self._debug_print('request', [ord(c) for c in request])
+        # clear any previous serial responses
+        chars_waiting = self._serial_device.inWaiting()
+        self._serial_device.read(chars_waiting)
         response = self._serial_device.write_read(request,use_readline=False,check_write_freq=True)
         self._debug_print('response', [ord(c) for c in response])
         data = self._response_to_data(response)
