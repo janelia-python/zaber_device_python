@@ -600,7 +600,7 @@ class ZaberStage(object):
     (200000, 100000, None)
     '''
     def __init__(self,*args,**kwargs):
-        self._devs = ZaberDevices()
+        self._devs = ZaberDevices(*args,**kwargs)
         if len(self._devs) == 0:
             raise ZaberError('Could not find any Zaber devices. Check connections and permissions.')
         self._x_axis = None
