@@ -120,7 +120,6 @@ class ZaberDevice(object):
         self._serial_device = SerialDevice(*args,**kwargs)
         atexit.register(self._exit_zaber_device)
         time.sleep(self._RESET_DELAY)
-        self._actuator_count = None
         self._lock = threading.Lock()
         t_end = time.time()
         self._debug_print('Initialization time =', (t_end - t_start))
@@ -204,28 +203,26 @@ class ZaberDevice(object):
         returns response'''
 
         self._lock.acquire()
-        if self._actuator_count is None:
-            self._actuator_count = self.get_actuator_count()
         if actuator is None:
             actuator = 0
-            response_length_expected = self._actuator_count * RESPONSE_LENGTH
         elif actuator < 0:
             raise ZaberError('actuator must be >= 0')
         else:
             actuator = int(actuator)
             actuator += 1
-            response_length_expected = RESPONSE_LENGTH
         args_list = self._data_to_args_list(data)
         request = self._args_to_request(actuator,command,*args_list)
         self._debug_print('request', [ord(c) for c in request])
-        response = []
         tries = 0
-        while (len(response) != response_length_expected) and (tries < RESPONSE_ATTEMPTS_MAX):
-            response = self._serial_device.write_read(request,use_readline=False,check_write_freq=True)
+        while tries < RESPONSE_ATTEMPTS_MAX:
             tries += 1
-        self._debug_print('response', [ord(c) for c in response])
-        data = self._response_to_data(response)
-        self._debug_print('data', data)
+            try:
+                response = self._serial_device.write_read(request,use_readline=False,check_write_freq=True)
+                self._debug_print('response', [ord(c) for c in response])
+                data = self._response_to_data(response)
+                self._debug_print('data', data)
+            except:
+                pass
         self._lock.release()
         return data
 
@@ -295,8 +292,6 @@ class ZaberDevice(object):
         '''
         Return the number of Zaber actuators connected in a chain.
         '''
-        if self._actuator_count is not None:
-            return self._actuator_count
         data = 123
         actuator = None
         response = self._send_request_get_response(55,actuator,data)
