@@ -6,6 +6,7 @@ import atexit
 import platform
 import os
 from exceptions import Exception
+import threading
 
 from serial_device2 import SerialDevice, SerialDevices, find_serial_device_ports, WriteFrequencyError
 
@@ -118,6 +119,7 @@ class ZaberDevice(object):
         self._serial_device = SerialDevice(*args,**kwargs)
         atexit.register(self._exit_zaber_device)
         time.sleep(self._RESET_DELAY)
+        self._lock = threading.Lock()
         t_end = time.time()
         self._debug_print('Initialization time =', (t_end - t_start))
 
@@ -178,6 +180,7 @@ class ZaberDevice(object):
         '''Sends request to device over serial port and
         returns number of bytes written'''
 
+        self._lock.acquire()
         if actuator is None:
             actuator = 0
         elif actuator < 0:
@@ -190,6 +193,7 @@ class ZaberDevice(object):
         self._debug_print('request', [ord(c) for c in request])
         bytes_written = self._serial_device.write_check_freq(request,delay_write=True)
         self._debug_print('bytes_written', bytes_written)
+        self._lock.release()
         return bytes_written
 
     def _send_request_get_response(self,command,actuator=None,data=None):
@@ -197,6 +201,7 @@ class ZaberDevice(object):
         '''Sends request to device over serial port and
         returns response'''
 
+        self._lock.acquire()
         if actuator is None:
             actuator = 0
         elif actuator < 0:
@@ -211,6 +216,7 @@ class ZaberDevice(object):
         self._debug_print('response', [ord(c) for c in response])
         data = self._response_to_data(response)
         self._debug_print('data', data)
+        self._lock.release()
         return data
 
     def close(self):
