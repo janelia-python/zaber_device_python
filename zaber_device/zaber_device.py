@@ -556,35 +556,53 @@ class ZaberStage(object):
     stage = ZaberStage() # Automatically finds devices if available
     stage.get_aliases()
     {123: [10, 11]}
-    stage.set_x_axis(123,10)
-    stage.set_y_axis(123,11)
+    serial_number = 123
+    alias = 10
+    stage.set_x_axis(serial_number,alias)
+    alias = 11
+    stage.set_y_axis(serial\number,alias)
     stage.home()
     stage.moving()
-    (True,True,True)
+    (True, True, None)
     stage.moving()
-    (False,False,False)
+    (False, False, None)
     stage.get_positions()
-    (0,0,0)
+    (0, 0, None)
     stage.move_x_at_speed(1000)
     stage.moving()
-    (True,False,False)
+    (True, False, None)
     stage.get_positions()
-    (14285, 0, 0)
+    (148140, 0, None)
     stage.stop_x()
     stage.moving()
-    (False,False,False)
+    (False, False, None)
     stage.get_positions()
-    (35898, 0, 0)
-    stage.move_y_relative(1234)
+    (245984, 0, None)
+    stage.move_y_relative(123456)
     stage.moving()
-    (False,True,False)
+    (False, True, None)
     stage.moving()
-    (False,False,False)
+    (False, False, None)
     stage.get_positions()
-    (35898, 1234, 0)
+    (245984, 123456, None)
+    stage.move_x_absolute(200000)
+    stage.move_y_absolute(100000)
+    stage.moving()
+    (False, False, None)
+    stage.store_x_position(0)
+    stage.get_stored_x_position(0)
+    200000
+    stage.move_x_relative(10000)
+    stage.get_positions()
+    (210000, 100000, None)
+    stage.move_to_stored_x_position(0)
+    stage.get_positions()
+    (200000, 100000, None)
     '''
     def __init__(self,*args,**kwargs):
-        self._devs = zaber_device.ZaberDevices()
+        self._devs = ZaberDevices()
+        if len(self._devs) == 0:
+            raise ZaberError('Could not find any Zaber devices. Check connections and permissions.')
         self._x_axis = None
         self._y_axis = None
         self._z_axis = None
@@ -654,6 +672,8 @@ class ZaberStage(object):
             dev = ax['dev']
             alias = ax['alias']
             dev.move_at_speed(speed,alias)
+        else:
+            raise ZaberError('{0}_axis not set!'.format(axis))
 
     def move_x_at_speed(self,speed):
         self._move_at_speed('x',speed)
@@ -675,6 +695,8 @@ class ZaberStage(object):
             dev = ax['dev']
             alias = ax['alias']
             dev.stop(alias)
+        else:
+            raise ZaberError('{0}_axis not set!'.format(axis))
 
     def stop_x(self):
         self._stop('x')
@@ -694,15 +716,15 @@ class ZaberStage(object):
         if self._x_axis is not None:
             x_position = positions[serial_number][self._x_axis['actuator']]
         else:
-            x_position = 0
+            x_position = None
         if self._y_axis is not None:
             y_position = positions[serial_number][self._y_axis['actuator']]
         else:
-            y_position = 0
+            y_position = None
         if self._z_axis is not None:
             z_position = positions[serial_number][self._z_axis['actuator']]
         else:
-            z_position = 0
+            z_position = None
         return x_position,y_position,z_position
 
     def moving(self):
@@ -714,15 +736,15 @@ class ZaberStage(object):
         if self._x_axis is not None:
             x_moving = movings[serial_number][self._x_axis['actuator']]
         else:
-            x_moving = False
+            x_moving = None
         if self._y_axis is not None:
             y_moving = movings[serial_number][self._y_axis['actuator']]
         else:
-            y_moving = False
+            y_moving = None
         if self._z_axis is not None:
             z_moving = movings[serial_number][self._z_axis['actuator']]
         else:
-            z_moving = False
+            z_moving = None
         return x_moving,y_moving,z_moving
 
     def home(self):
@@ -746,6 +768,8 @@ class ZaberStage(object):
             dev = ax['dev']
             alias = ax['alias']
             dev.move_absolute(position,alias)
+        else:
+            raise ZaberError('{0}_axis not set!'.format(axis))
 
     def move_x_absolute(self,position):
         self._move_absolute('x',position)
@@ -767,6 +791,8 @@ class ZaberStage(object):
             dev = ax['dev']
             alias = ax['alias']
             dev.move_relative(position,alias)
+        else:
+            raise ZaberError('{0}_axis not set!'.format(axis))
 
     def move_x_relative(self,position):
         self._move_relative('x',position)
@@ -788,6 +814,8 @@ class ZaberStage(object):
             dev = ax['dev']
             alias = ax['alias']
             dev.store_position(address,alias)
+        else:
+            raise ZaberError('{0}_axis not set!'.format(axis))
 
     def store_x_position(self,address):
         self._store_position('x',address)
@@ -807,8 +835,11 @@ class ZaberStage(object):
             ax = self._z_axis
         if ax is not None:
             dev = ax['dev']
-            alias = ax['alias']
-            return dev.get_stored_position(address,alias)
+            actuator = ax['actuator']
+            positions = dev.get_stored_position(address)
+            return positions[actuator]
+        else:
+            raise ZaberError('{0}_axis not set!'.format(axis))
 
     def get_stored_x_position(self,address):
         return self._get_stored_position('x',address)
@@ -830,6 +861,8 @@ class ZaberStage(object):
             dev = ax['dev']
             alias = ax['alias']
             dev.move_to_stored_position(address,alias)
+        else:
+            raise ZaberError('{0}_axis not set!'.format(axis))
 
     def move_to_stored_x_position(self,address):
         self._move_to_stored_position('x',address)

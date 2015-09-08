@@ -20,74 +20,87 @@ dev = ZaberDevice() # Automatically finds device if one available
 dev = ZaberDevice('/dev/ttyUSB0') # Linux
 dev = ZaberDevice('/dev/tty.usbmodem262471') # Mac OS X
 dev = ZaberDevice('COM3') # Windows
-dev.get\_actuator\_count()
+dev.get_actuator_count()
 2
-dev.get\_position()
+dev.get_position()
 [130000, 160000]
 dev.home()
 dev.moving()
 [True, True]
 dev.moving()
 [False, False]
-dev.get\_position()
+dev.get_position()
 [0, 0]
-dev.move\_relative(10000)
-dev.get\_position()
+dev.move_relative(10000)
+dev.get_position()
 [10000, 10000]
-dev.move\_relative(10000,0)
+dev.move_relative(10000,0)
 dev.moving()
 [True, False]
-dev.get\_position()
+dev.get_position()
 [20000, 10000]
-dev.store\_position(0)
-dev.get\_stored\_position(0)
+dev.store_position(0)
+dev.get_stored_position(0)
 [20000, 10000]
-dev.move\_at\_speed(1000)
+dev.move_at_speed(1000)
 dev.stop()
-dev.get\_position()
+dev.get_position()
 [61679, 51679]
-dev.move\_to\_stored\_position(0)
-dev.get\_position()
+dev.move_to_stored_position(0)
+dev.get_position()
 [20000, 10000]
 ```
 
 ```python
 devs = ZaberDevices()  # Automatically finds all available devices
 devs.keys()
-dev = devs[serial\_number]
+dev = devs[serial_number]
 ```
 
 ```python
 stage = ZaberStage() # Automatically finds devices if available
-stage.get\_aliases()
+stage.get_aliases()
 {123: [10, 11]}
-serial\_number = 123
+serial_number = 123
 alias = 10
-stage.set\_x\_axis(serial\_number,alias)
+stage.set_x_axis(serial_number,alias)
 alias = 11
-stage.set\_y\_axis(serial\number,alias)
+stage.set_y_axis(serial\number,alias)
 stage.home()
 stage.moving()
-(True,True,True)
+(True, True, None)
 stage.moving()
-(False,False,False)
-stage.get\_positions()
-(0,0,0)
-stage.move\_x\_at\_speed(1000)
+(False, False, None)
+stage.get_positions()
+(0, 0, None)
+stage.move_x_at_speed(1000)
 stage.moving()
-(True,False,False)
-stage.get\_positions()
-(14285, 0, 0)
-stage.stop\_x()
+(True, False, None)
+stage.get_positions()
+(148140, 0, None)
+stage.stop_x()
 stage.moving()
-(False,False,False)
-stage.get\_positions()
-(35898, 0, 0)
-stage.move\_y\_relative(1234)
+(False, False, None)
+stage.get_positions()
+(245984, 0, None)
+stage.move_y_relative(123456)
 stage.moving()
-(False,True,False)
+(False, True, None)
 stage.moving()
-(False,False,False)
-stage.get\_positions()
-(35898, 1234, 0)
+(False, False, None)
+stage.get_positions()
+(245984, 123456, None)
+stage.move_x_absolute(200000)
+stage.move_y_absolute(100000)
+stage.moving()
+(False, False, None)
+stage.store_x_position(0)
+stage.get_stored_x_position(0)
+200000
+stage.move_x_relative(10000)
+stage.get_positions()
+(210000, 100000, None)
+stage.move_to_stored_x_position(0)
+stage.get_positions()
+(200000, 100000, None)
 ```
