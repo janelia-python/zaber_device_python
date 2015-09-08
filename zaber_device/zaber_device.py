@@ -144,6 +144,7 @@ class ZaberDevice(object):
         # Cmd_Byte_4 = Cmd_Data / 256
         # Cmd_Data   = Cmd_Data - 256   * Cmd_Byte_4
         # Cmd_Byte 3 = Cmd_Data
+        data = int(data)
         if data < 0:
             data += pow(256,4)
         arg3 = data // pow(256,3)
@@ -182,6 +183,7 @@ class ZaberDevice(object):
         elif actuator < 0:
             raise ZaberError('actuator must be >= 0')
         else:
+            actuator = int(actuator)
             actuator += 1
         args_list = self._data_to_args_list(data)
         request = self._args_to_request(actuator,command,*args_list)
@@ -200,6 +202,7 @@ class ZaberDevice(object):
         elif actuator < 0:
             raise ZaberError('actuator must be >= 0')
         else:
+            actuator = int(actuator)
             actuator += 1
         args_list = self._data_to_args_list(data)
         request = self._args_to_request(actuator,command,*args_list)
@@ -241,6 +244,7 @@ class ZaberDevice(object):
         '''
         Saves the current absolute position of the actuator into the address.
         '''
+        address = int(address)
         if (address < POSITION_ADDRESS_MIN) or (address > POSITION_ADDRESS_MAX):
             raise ZaberError('address must be between {0} and {1}'.format(POSITION_ADDRESS_MIN,POSITION_ADDRESS_MAX))
         self._send_request(16,actuator,address)
@@ -249,6 +253,7 @@ class ZaberDevice(object):
         '''
         Gets the current absolute position of the actuator into the address.
         '''
+        address = int(address)
         if (address < POSITION_ADDRESS_MIN) or (address > POSITION_ADDRESS_MAX):
             raise ZaberError('address must be between {0} and {1}'.format(POSITION_ADDRESS_MIN,POSITION_ADDRESS_MAX))
         actuator = None
@@ -259,6 +264,7 @@ class ZaberDevice(object):
         '''
         Moves the actuator to the position stored in the specified address.
         '''
+        address = int(address)
         if (address < POSITION_ADDRESS_MIN) or (address > POSITION_ADDRESS_MAX):
             raise ZaberError('address must be between {0} and {1}'.format(POSITION_ADDRESS_MIN,POSITION_ADDRESS_MAX))
         self._send_request(18,actuator,address)
@@ -486,6 +492,7 @@ class ZaberDevice(object):
         data = 1 << 7
         address = SERIAL_NUMBER_ADDRESS
         data += address
+        serial_number = int(serial_number)
         serial_number = serial_number << 8
         data += serial_number
         self._send_request(35,actuator,data)
@@ -539,6 +546,299 @@ class ZaberDevices(dict):
         dev = ZaberDevice(*args,**kwargs)
         serial_number = dev.get_serial_number()
         self[serial_number] = dev
+
+
+class ZaberStage(object):
+    '''
+    ZaberStage contains an instance of ZaberDevices and adds
+    methods to it to use it as an xyz stage.
+    Example Usage:
+    stage = ZaberStage() # Automatically finds devices if available
+    stage.get_aliases()
+    {123: [10, 11]}
+    stage.set_x_axis(123,10)
+    stage.set_y_axis(123,11)
+    stage.home()
+    stage.moving()
+    (True,True,True)
+    stage.moving()
+    (False,False,False)
+    stage.get_positions()
+    (0,0,0)
+    stage.move_x_at_speed(1000)
+    stage.moving()
+    (True,False,False)
+    stage.get_positions()
+    (14285, 0, 0)
+    stage.stop_x()
+    stage.moving()
+    (False,False,False)
+    stage.get_positions()
+    (35898, 0, 0)
+    stage.move_y_relative(1234)
+    stage.moving()
+    (False,True,False)
+    stage.moving()
+    (False,False,False)
+    stage.get_positions()
+    (35898, 1234, 0)
+    '''
+    def __init__(self,*args,**kwargs):
+        self._devs = zaber_device.ZaberDevices()
+        self._x_axis = None
+        self._y_axis = None
+        self._z_axis = None
+
+    def get_aliases(self):
+        '''
+        Returns a dictionary with serial numbers as keys and lists of aliases as values.
+        '''
+        aliases = {}
+        for serial_number in self._devs:
+            dev = self._devs[serial_number]
+            alias = dev.get_alias()
+            aliases[serial_number] = alias
+        return aliases
+
+    def set_aliases(self,aliases):
+        '''
+        Aliases is a dictionary with serial numbers as keys and lists of aliases as values.
+        '''
+        aliases_prev = self.get_aliases()
+        if aliases_prev.keys() != aliases.keys():
+            error_string = 'aliases.keys() must equal: {0}'.format(aliases_prev.keys())
+            raise ZaberError(error_string)
+        for serial_number in aliases:
+            try:
+                if len(aliases_prev[serial_number]) != len(aliases[serial_number]):
+                    error_string = 'len(aliases[{0}]) must equal {1}'.format(serial_number,len(aliases_prev[serial_number]))
+                    raise ZaberError(error_string)
+            except TypeError:
+                error_string = 'aliases[{0}] is incorrect type'.format(serial_number)
+                raise ZaberError(error_string)
+            dev = self._devs[serial_number]
+            for actuator in range(len(aliases[serial_number])):
+                dev.set_alias(actuator,aliases[serial_number][actuator])
+
+    def _set_axis(self,axis,serial_number,alias):
+        ax = {}
+        ax['serial_number'] = serial_number
+        ax['dev'] = self._devs[serial_number]
+        ax['alias'] = alias
+        aliases = self.get_aliases()
+        ax['actuator'] = aliases[serial_number].index(alias)
+        if axis == 'x':
+            self._x_axis = ax
+        elif axis == 'y':
+            self._y_axis = ax
+        elif axis == 'z':
+            self._z_axis = ax
+
+    def set_x_axis(self,serial_number,alias):
+        self._set_axis('x',serial_number,alias)
+
+    def set_y_axis(self,serial_number,alias):
+        self._set_axis('y',serial_number,alias)
+
+    def set_z_axis(self,serial_number,alias):
+        self._set_axis('z',serial_number,alias)
+
+    def _move_at_speed(self,axis,speed):
+        if axis == 'x':
+            ax = self._x_axis
+        elif axis == 'y':
+            ax = self._y_axis
+        elif axis == 'z':
+            ax = self._z_axis
+        if ax is not None:
+            dev = ax['dev']
+            alias = ax['alias']
+            dev.move_at_speed(speed,alias)
+
+    def move_x_at_speed(self,speed):
+        self._move_at_speed('x',speed)
+
+    def move_y_at_speed(self,speed):
+        self._move_at_speed('y',speed)
+
+    def move_z_at_speed(self,speed):
+        self._move_at_speed('z',speed)
+
+    def _stop(self,axis):
+        if axis == 'x':
+            ax = self._x_axis
+        elif axis == 'y':
+            ax = self._y_axis
+        elif axis == 'z':
+            ax = self._z_axis
+        if ax is not None:
+            dev = ax['dev']
+            alias = ax['alias']
+            dev.stop(alias)
+
+    def stop_x(self):
+        self._stop('x')
+
+    def stop_y(self):
+        self._stop('y')
+
+    def stop_z(self):
+        self._stop('z')
+
+    def get_positions(self):
+        positions = {}
+        for serial_number in self._devs:
+            dev = self._devs[serial_number]
+            position = dev.get_position()
+            positions[serial_number] = position
+        if self._x_axis is not None:
+            x_position = positions[serial_number][self._x_axis['actuator']]
+        else:
+            x_position = 0
+        if self._y_axis is not None:
+            y_position = positions[serial_number][self._y_axis['actuator']]
+        else:
+            y_position = 0
+        if self._z_axis is not None:
+            z_position = positions[serial_number][self._z_axis['actuator']]
+        else:
+            z_position = 0
+        return x_position,y_position,z_position
+
+    def moving(self):
+        movings = {}
+        for serial_number in self._devs:
+            dev = self._devs[serial_number]
+            moving = dev.moving()
+            movings[serial_number] = moving
+        if self._x_axis is not None:
+            x_moving = movings[serial_number][self._x_axis['actuator']]
+        else:
+            x_moving = False
+        if self._y_axis is not None:
+            y_moving = movings[serial_number][self._y_axis['actuator']]
+        else:
+            y_moving = False
+        if self._z_axis is not None:
+            z_moving = movings[serial_number][self._z_axis['actuator']]
+        else:
+            z_moving = False
+        return x_moving,y_moving,z_moving
+
+    def home(self):
+        for serial_number in self._devs:
+            dev = self._devs[serial_number]
+            dev.home()
+
+    def stop(self):
+        for serial_number in self._devs:
+            dev = self._devs[serial_number]
+            dev.stop()
+
+    def _move_absolute(self,axis,position):
+        if axis == 'x':
+            ax = self._x_axis
+        elif axis == 'y':
+            ax = self._y_axis
+        elif axis == 'z':
+            ax = self._z_axis
+        if ax is not None:
+            dev = ax['dev']
+            alias = ax['alias']
+            dev.move_absolute(position,alias)
+
+    def move_x_absolute(self,position):
+        self._move_absolute('x',position)
+
+    def move_y_absolute(self,position):
+        self._move_absolute('y',position)
+
+    def move_z_absolute(self,position):
+        self._move_absolute('z',position)
+
+    def _move_relative(self,axis,position):
+        if axis == 'x':
+            ax = self._x_axis
+        elif axis == 'y':
+            ax = self._y_axis
+        elif axis == 'z':
+            ax = self._z_axis
+        if ax is not None:
+            dev = ax['dev']
+            alias = ax['alias']
+            dev.move_relative(position,alias)
+
+    def move_x_relative(self,position):
+        self._move_relative('x',position)
+
+    def move_y_relative(self,position):
+        self._move_relative('y',position)
+
+    def move_z_relative(self,position):
+        self._move_relative('z',position)
+
+    def _store_position(self,axis,address):
+        if axis == 'x':
+            ax = self._x_axis
+        elif axis == 'y':
+            ax = self._y_axis
+        elif axis == 'z':
+            ax = self._z_axis
+        if ax is not None:
+            dev = ax['dev']
+            alias = ax['alias']
+            dev.store_position(address,alias)
+
+    def store_x_position(self,address):
+        self._store_position('x',address)
+
+    def store_y_position(self,address):
+        self._store_position('y',address)
+
+    def store_z_position(self,address):
+        self._store_position('z',address)
+
+    def _get_stored_position(self,axis,address):
+        if axis == 'x':
+            ax = self._x_axis
+        elif axis == 'y':
+            ax = self._y_axis
+        elif axis == 'z':
+            ax = self._z_axis
+        if ax is not None:
+            dev = ax['dev']
+            alias = ax['alias']
+            return dev.get_stored_position(address,alias)
+
+    def get_stored_x_position(self,address):
+        return self._get_stored_position('x',address)
+
+    def get_stored_y_position(self,address):
+        return self._get_stored_position('y',address)
+
+    def get_stored_z_position(self,address):
+        return self._get_stored_position('z',address)
+
+    def _move_to_stored_position(self,axis,address):
+        if axis == 'x':
+            ax = self._x_axis
+        elif axis == 'y':
+            ax = self._y_axis
+        elif axis == 'z':
+            ax = self._z_axis
+        if ax is not None:
+            dev = ax['dev']
+            alias = ax['alias']
+            dev.move_to_stored_position(address,alias)
+
+    def move_to_stored_x_position(self,address):
+        self._move_to_stored_position('x',address)
+
+    def move_to_stored_y_position(self,address):
+        self._move_to_stored_position('y',address)
+
+    def move_to_stored_z_position(self,address):
+        self._move_to_stored_position('z',address)
 
 
 def find_zaber_device_ports(baudrate=None,

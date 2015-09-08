@@ -51,4 +51,33 @@ Example Usage::
     devs = ZaberDevices()  # Automatically finds all available devices
     devs.keys()
     dev = devs[serial_number]
+    stage = ZaberStage() # Automatically finds devices if available
+    stage.get_aliases()
+    {123: [10, 11]}
+    stage.set_x_axis(123,10)
+    stage.set_y_axis(123,11)
+    stage.home()
+    stage.moving()
+    (True,True,True)
+    stage.moving()
+    (False,False,False)
+    stage.get_positions()
+    (0,0,0)
+    stage.move_x_at_speed(1000)
+    stage.moving()
+    (True,False,False)
+    stage.get_positions()
+    (14285, 0, 0)
+    stage.stop_x()
+    stage.moving()
+    (False,False,False)
+    stage.get_positions()
+    (35898, 0, 0)
+    stage.move_y_relative(1234)
+    stage.moving()
+    (False,True,False)
+    stage.moving()
+    (False,False,False)
+    stage.get_positions()
+    (35898, 1234, 0)
 
