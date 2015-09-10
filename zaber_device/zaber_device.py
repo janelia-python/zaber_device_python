@@ -251,7 +251,7 @@ class ZaberDevice(object):
         '''
         Assigns new numbers to all the actuators in the order in which they are connected.
         '''
-        self._send_request(2,0)
+        self._send_request(2,None)
 
     def store_position(self,address,actuator=None):
         '''
