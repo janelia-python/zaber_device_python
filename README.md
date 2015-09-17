@@ -104,3 +104,24 @@ stage.move_to_stored_x_position(0)
 stage.get_positions()
 (200000, 100000, None)
 ```
+
+##Installation
+
+[Setup Python](https://github.com/janelia-pypi/python_setup)
+
+###Linux and Mac OS X
+
+```shell
+mkdir -p ~/virtualenvs/zaber_device
+virtualenv ~/virtualenvs/zaber_device
+source ~/virtualenvs/zaber_device/bin/activate
+pip install zaber_device
+```
+
+###Windows
+
+```shell
+virtualenv C:\virtualenvs\zaber_device
+C:\virtualenvs\zaber_device\Scripts\activate
+pip install zaber_device
+```
