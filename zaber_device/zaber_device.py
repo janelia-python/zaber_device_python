@@ -45,6 +45,12 @@ class ZaberError(Exception):
     def __str__(self):
         return repr(self.value)
 
+class ZaberNumberingError(Exception):
+    def __init__(self,value):
+        self.value = value
+    def __str__(self):
+        return repr(self.value)
+
 class ZaberDevice(object):
     '''
     This Python package (zaber_device) creates a class named ZaberDevice,
@@ -167,6 +173,8 @@ class ZaberDevice(object):
         for actuator_n in range(actuator_count):
             actuator = ord(response[0+actuator_n*RESPONSE_LENGTH]) - 1
             self._debug_print('response_actuator',actuator)
+            if actuator >= actuator_count:
+                raise ZaberNumberingError('')
             command = ord(response[1+actuator_n*RESPONSE_LENGTH])
             self._debug_print('response_command',command)
             response_copy = response[(2+actuator_n*RESPONSE_LENGTH):(6+actuator_n*RESPONSE_LENGTH)]
@@ -221,8 +229,8 @@ class ZaberDevice(object):
                 self._debug_print('response', [ord(c) for c in response])
                 data = self._response_to_data(response)
                 self._debug_print('data', data)
-            except:
-                pass
+            except ZaberNumberingError:
+                raise ZaberError('Improper actuator number detected in response, may need to rearrange zaber cables or use renumber method to fix.')
         self._lock.release()
         return data
 
@@ -576,41 +584,41 @@ class ZaberStage(object):
     stage.set_y_axis(serial\number,alias)
     stage.home()
     stage.moving()
-    (True, True, None)
+    (True, True, False)
     stage.moving()
-    (False, False, None)
+    (False, False, False)
     stage.get_positions()
-    (0, 0, None)
+    (0, 0, 0)
     stage.move_x_at_speed(1000)
     stage.moving()
-    (True, False, None)
+    (True, False, False)
     stage.get_positions()
-    (148140, 0, None)
+    (148140, 0, 0)
     stage.stop_x()
     stage.moving()
-    (False, False, None)
+    (False, False, False)
     stage.get_positions()
-    (245984, 0, None)
+    (245984, 0, 0)
     stage.move_y_relative(123456)
     stage.moving()
-    (False, True, None)
+    (False, True, False)
     stage.moving()
-    (False, False, None)
+    (False, False, False)
     stage.get_positions()
-    (245984, 123456, None)
+    (245984, 123456, False)
     stage.move_x_absolute(200000)
     stage.move_y_absolute(100000)
     stage.moving()
-    (False, False, None)
+    (False, False, False)
     stage.store_x_position(0)
     stage.get_stored_x_position(0)
     200000
     stage.move_x_relative(10000)
     stage.get_positions()
-    (210000, 100000, None)
+    (210000, 100000, 0)
     stage.move_to_stored_x_position(0)
     stage.get_positions()
-    (200000, 100000, None)
+    (200000, 100000, 0)
     '''
     def __init__(self,*args,**kwargs):
         self._devs = ZaberDevices(*args,**kwargs)
@@ -619,6 +627,7 @@ class ZaberStage(object):
         self._x_axis = None
         self._y_axis = None
         self._z_axis = None
+        self._x_microstep_size = None
 
     def get_aliases(self):
         '''
@@ -872,6 +881,36 @@ class ZaberStage(object):
     def move_to_stored_z_position(self,address):
         self._move_to_stored_position('z',address)
 
+    # def get_actuator_ids(self):
+    #     positions = {}
+    #     for serial_number in self._devs:
+    #         dev = self._devs[serial_number]
+    #         position = dev.get_position()
+    #         positions[serial_number] = position
+    #     if self._x_axis is not None:
+    #         x_position = positions[serial_number][self._x_axis['actuator']]
+    #     else:
+    #         x_position = 0
+    #     if self._y_axis is not None:
+    #         y_position = positions[serial_number][self._y_axis['actuator']]
+    #     else:
+    #         y_position = 0
+    #     if self._z_axis is not None:
+    #         z_position = positions[serial_number][self._z_axis['actuator']]
+    #     else:
+    #         z_position = 0
+    #     return x_position,y_position,z_position
+
+    # def set_microstep_size(self,microstep_size,actuator=None):
+    #     actuator_count = self.get_actuator_count
+    #     if (self.microstep_size is None) or len
+    #     self.microstep_size = []
+    #     for actuator in range(actuator_count):
+    #         self.microstep_size.append(microstep_size)
+
+    # def get_microstep_size(self):
+    #     return self.microstep_size
+
 
 def find_zaber_device_ports(baudrate=None,
                             try_ports=None,
@@ -895,6 +934,8 @@ def find_zaber_device_ports(baudrate=None,
                     s_n = dev.get_serial_number()
                     if (serial_number is None) or (s_n == serial_number):
                         zaber_device_ports[port] = {'serial_number':s_n}
+            except ZaberError as e:
+                zaber_device_ports[port] = {'serial_number':None}
             except:
                 continue
             dev.close()
