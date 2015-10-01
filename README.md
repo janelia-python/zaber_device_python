@@ -65,44 +65,49 @@ serial_number = 123
 alias = 10
 stage.set_x_axis(serial_number,alias)
 alias = 11
-stage.set_y_axis(serial\number,alias)
+stage.set_y_axis(serial_number,alias)
+# Lookup microstep_size on Zaber website
+stage.set_x_microstep_size(0.49609375e-3)
+stage.get_x_microstep_size()
+0.00049609375
+stage.set_y_microstep_size(0.49609375e-3)
 stage.home()
 stage.moving()
 (True, True, False)
 stage.moving()
 (False, False, False)
 stage.get_positions()
-(0, 0, 0)
-stage.move_x_at_speed(1000)
+(0.0, 0.0, 0)
+stage.move_x_at_speed(5)
 stage.moving()
 (True, False, False)
 stage.get_positions()
-(148140, 0, 0)
+(76.4619375, 0.0, 0)
 stage.stop_x()
 stage.moving()
 (False, False, False)
 stage.get_positions()
-(245984, 0, 0)
-stage.move_y_relative(123456)
+(94.38133984375, 0.0, 0)
+stage.move_y_relative(125)
 stage.moving()
 (False, True, False)
 stage.moving()
 (False, False, False)
 stage.get_positions()
-(245984, 123456, False)
-stage.move_x_absolute(200000)
-stage.move_y_absolute(100000)
+(94.38133984375, 124.99975, 0)
+stage.move_x_absolute(50)
+stage.move_y_absolute(75)
 stage.moving()
 (False, False, False)
 stage.store_x_position(0)
 stage.get_stored_x_position(0)
-200000
-stage.move_x_relative(10000)
+49.99980078125
+stage.move_x_relative(50)
 stage.get_positions()
-(210000, 100000, 0)
+(99.9996015625, 74.99994921875, 0)
 stage.move_to_stored_x_position(0)
 stage.get_positions()
-(200000, 100000, 0)
+(49.99980078125, 74.99994921875, 0)
 ```
 
 ##First Time Device Setup
@@ -144,12 +149,10 @@ dev.set_alias(3,11)
 stage = ZaberStage() # Automatically finds devices if available
 stage.get_aliases()
 {123: [10, 11]}
-serial_number = 123
-alias = 10
-stage.set_x_axis(serial_number,alias)
-alias = 11
-stage.set_y_axis(serial\number,alias)
+stage.set_x_axis(123,10)
+stage.set_y_axis(123,11)
 stage.get_actuator_ids()
+(4452, 4452, None)
 ```
 
 ###Find Microstep Size
@@ -173,9 +176,16 @@ Example: T-LSR450B = 0.49609375 µm
 To set units of mm, set microstep_size to 0.49609375e-3
 
 ```python
-dev = ZaberDevice() # Automatically finds devices if available
-dev.set_microstep_size(0.49609375e-3)
-dev.get_microstep_size()
+stage = ZaberStage() # Automatically finds devices if available
+stage.get_aliases()
+{123: [10, 11]}
+stage.set_x_axis(123,10)
+stage.set_y_axis(123,11)
+stage.set_x_microstep_size(0.49609375e-3)
+stage.get_x_microstep_size()
+0.00049609375
+stage.set_y_microstep_size(0.49609375e-3)
+stage.get_y_microstep_size()
 0.00049609375
 ```
 

@@ -581,44 +581,49 @@ class ZaberStage(object):
     alias = 10
     stage.set_x_axis(serial_number,alias)
     alias = 11
-    stage.set_y_axis(serial\number,alias)
+    stage.set_y_axis(serial_number,alias)
+    # Lookup microstep_size on Zaber website
+    stage.set_x_microstep_size(0.49609375e-3)
+    stage.get_x_microstep_size()
+    0.00049609375
+    stage.set_y_microstep_size(0.49609375e-3)
     stage.home()
     stage.moving()
     (True, True, False)
     stage.moving()
     (False, False, False)
     stage.get_positions()
-    (0, 0, 0)
-    stage.move_x_at_speed(1000)
+    (0.0, 0.0, 0)
+    stage.move_x_at_speed(5)
     stage.moving()
     (True, False, False)
     stage.get_positions()
-    (148140, 0, 0)
+    (76.4619375, 0.0, 0)
     stage.stop_x()
     stage.moving()
     (False, False, False)
     stage.get_positions()
-    (245984, 0, 0)
-    stage.move_y_relative(123456)
+    (94.38133984375, 0.0, 0)
+    stage.move_y_relative(125)
     stage.moving()
     (False, True, False)
     stage.moving()
     (False, False, False)
     stage.get_positions()
-    (245984, 123456, False)
-    stage.move_x_absolute(200000)
-    stage.move_y_absolute(100000)
+    (94.38133984375, 124.99975, 0)
+    stage.move_x_absolute(50)
+    stage.move_y_absolute(75)
     stage.moving()
     (False, False, False)
     stage.store_x_position(0)
     stage.get_stored_x_position(0)
-    200000
-    stage.move_x_relative(10000)
+    49.99980078125
+    stage.move_x_relative(50)
     stage.get_positions()
-    (210000, 100000, 0)
+    (99.9996015625, 74.99994921875, 0)
     stage.move_to_stored_x_position(0)
     stage.get_positions()
-    (200000, 100000, 0)
+    (49.99980078125, 74.99994921875, 0)
     '''
     def __init__(self,*args,**kwargs):
         self._devs = ZaberDevices(*args,**kwargs)
@@ -627,7 +632,9 @@ class ZaberStage(object):
         self._x_axis = None
         self._y_axis = None
         self._z_axis = None
-        self._x_microstep_size = None
+        self._x_microstep_size = 1
+        self._y_microstep_size = 1
+        self._z_microstep_size = 1
 
     def get_aliases(self):
         '''
@@ -686,10 +693,13 @@ class ZaberStage(object):
     def _move_at_speed(self,axis,speed):
         if axis == 'x':
             ax = self._x_axis
+            speed /= (9.375*self._x_microstep_size)
         elif axis == 'y':
             ax = self._y_axis
+            speed /= (9.375*self._y_microstep_size)
         elif axis == 'z':
             ax = self._z_axis
+            speed /= (9.375*self._z_microstep_size)
         if ax is not None:
             dev = ax['dev']
             alias = ax['alias']
@@ -733,14 +743,17 @@ class ZaberStage(object):
             positions[serial_number] = position
         if self._x_axis is not None:
             x_position = positions[serial_number][self._x_axis['actuator']]
+            x_position *= self._x_microstep_size
         else:
             x_position = 0
         if self._y_axis is not None:
             y_position = positions[serial_number][self._y_axis['actuator']]
+            y_position *= self._y_microstep_size
         else:
             y_position = 0
         if self._z_axis is not None:
             z_position = positions[serial_number][self._z_axis['actuator']]
+            z_position *= self._z_microstep_size
         else:
             z_position = 0
         return x_position,y_position,z_position
@@ -778,10 +791,13 @@ class ZaberStage(object):
     def _move_absolute(self,axis,position):
         if axis == 'x':
             ax = self._x_axis
+            position /= self._x_microstep_size
         elif axis == 'y':
             ax = self._y_axis
+            position /= self._y_microstep_size
         elif axis == 'z':
             ax = self._z_axis
+            position /= self._z_microstep_size
         if ax is not None:
             dev = ax['dev']
             alias = ax['alias']
@@ -799,10 +815,13 @@ class ZaberStage(object):
     def _move_relative(self,axis,position):
         if axis == 'x':
             ax = self._x_axis
+            position /= self._x_microstep_size
         elif axis == 'y':
             ax = self._y_axis
+            position /= self._y_microstep_size
         elif axis == 'z':
             ax = self._z_axis
+            position /= self._z_microstep_size
         if ax is not None:
             dev = ax['dev']
             alias = ax['alias']
@@ -841,15 +860,20 @@ class ZaberStage(object):
     def _get_stored_position(self,axis,address):
         if axis == 'x':
             ax = self._x_axis
+            microstep_size = self._x_microstep_size
         elif axis == 'y':
             ax = self._y_axis
+            microstep_size = self._y_microstep_size
         elif axis == 'z':
             ax = self._z_axis
+            microstep_size = self._z_microstep_size
         if ax is not None:
             dev = ax['dev']
             actuator = ax['actuator']
             positions = dev.get_stored_position(address)
-            return positions[actuator]
+            position = positions[actuator]
+            position *= microstep_size
+            return position
 
     def get_stored_x_position(self,address):
         return self._get_stored_position('x',address)
@@ -881,35 +905,51 @@ class ZaberStage(object):
     def move_to_stored_z_position(self,address):
         self._move_to_stored_position('z',address)
 
-    # def get_actuator_ids(self):
-    #     positions = {}
-    #     for serial_number in self._devs:
-    #         dev = self._devs[serial_number]
-    #         position = dev.get_position()
-    #         positions[serial_number] = position
-    #     if self._x_axis is not None:
-    #         x_position = positions[serial_number][self._x_axis['actuator']]
-    #     else:
-    #         x_position = 0
-    #     if self._y_axis is not None:
-    #         y_position = positions[serial_number][self._y_axis['actuator']]
-    #     else:
-    #         y_position = 0
-    #     if self._z_axis is not None:
-    #         z_position = positions[serial_number][self._z_axis['actuator']]
-    #     else:
-    #         z_position = 0
-    #     return x_position,y_position,z_position
+    def get_actuator_ids(self):
+        actuator_ids = {}
+        for serial_number in self._devs:
+            dev = self._devs[serial_number]
+            actuator_id = dev.get_actuator_id()
+            actuator_ids[serial_number] = actuator_id
+        if self._x_axis is not None:
+            x_actuator_id = actuator_ids[serial_number][self._x_axis['actuator']]
+        else:
+            x_actuator_id = None
+        if self._y_axis is not None:
+            y_actuator_id = actuator_ids[serial_number][self._y_axis['actuator']]
+        else:
+            y_actuator_id = None
+        if self._z_axis is not None:
+            z_actuator_id = actuator_ids[serial_number][self._z_axis['actuator']]
+        else:
+            z_actuator_id = None
+        return x_actuator_id,y_actuator_id,z_actuator_id
 
-    # def set_microstep_size(self,microstep_size,actuator=None):
-    #     actuator_count = self.get_actuator_count
-    #     if (self.microstep_size is None) or len
-    #     self.microstep_size = []
-    #     for actuator in range(actuator_count):
-    #         self.microstep_size.append(microstep_size)
+    def _set_microstep_size(self,axis,microstep_size):
+        if axis == 'x':
+            self._x_microstep_size = microstep_size
+        elif axis == 'y':
+            self._y_microstep_size = microstep_size
+        elif axis == 'z':
+            self._z_microstep_size = microstep_size
 
-    # def get_microstep_size(self):
-    #     return self.microstep_size
+    def set_x_microstep_size(self,microstep_size):
+        self._set_microstep_size('x',microstep_size)
+
+    def set_y_microstep_size(self,microstep_size):
+        self._set_microstep_size('y',microstep_size)
+
+    def set_z_microstep_size(self,microstep_size):
+        self._set_microstep_size('z',microstep_size)
+
+    def get_x_microstep_size(self):
+        return self._x_microstep_size
+
+    def get_y_microstep_size(self):
+        return self._y_microstep_size
+
+    def get_z_microstep_size(self):
+        return self._z_microstep_size
 
 
 def find_zaber_device_ports(baudrate=None,
