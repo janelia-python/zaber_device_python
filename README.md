@@ -1,5 +1,4 @@
-zaber_device_python
-===================
+#zaber_device_python
 
 This Python package (zaber\_device) creates a class named ZaberDevice,
 which contains an instance of serial\_device2.SerialDevice and adds
