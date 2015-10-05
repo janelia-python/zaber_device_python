@@ -668,6 +668,8 @@ class ZaberStage(object):
                 dev.set_alias(actuator,aliases[serial_number][actuator])
 
     def _set_axis(self,axis,serial_number,alias):
+        serial_number = int(serial_number)
+        alias = int(alias)
         ax = {}
         ax['serial_number'] = serial_number
         ax['dev'] = self._devs[serial_number]
@@ -691,6 +693,7 @@ class ZaberStage(object):
         self._set_axis('z',serial_number,alias)
 
     def _move_at_speed(self,axis,speed):
+        speed = float(speed)
         if axis == 'x':
             ax = self._x_axis
             speed /= (9.375*self._x_microstep_size)
@@ -789,6 +792,7 @@ class ZaberStage(object):
             dev.stop()
 
     def _move_absolute(self,axis,position):
+        position = float(position)
         if axis == 'x':
             ax = self._x_axis
             position /= self._x_microstep_size
@@ -813,6 +817,7 @@ class ZaberStage(object):
         self._move_absolute('z',position)
 
     def _move_relative(self,axis,position):
+        position = float(position)
         if axis == 'x':
             ax = self._x_axis
             position /= self._x_microstep_size
@@ -926,12 +931,16 @@ class ZaberStage(object):
         return x_actuator_id,y_actuator_id,z_actuator_id
 
     def _set_microstep_size(self,axis,microstep_size):
-        if axis == 'x':
-            self._x_microstep_size = microstep_size
-        elif axis == 'y':
-            self._y_microstep_size = microstep_size
-        elif axis == 'z':
-            self._z_microstep_size = microstep_size
+        try:
+            microstep_size = float(microstep_size)
+            if axis == 'x':
+                self._x_microstep_size = microstep_size
+            elif axis == 'y':
+                self._y_microstep_size = microstep_size
+            elif axis == 'z':
+                self._z_microstep_size = microstep_size
+        except:
+            pass
 
     def set_x_microstep_size(self,microstep_size):
         self._set_microstep_size('x',microstep_size)
