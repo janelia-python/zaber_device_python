@@ -59,10 +59,11 @@ class ZaberDevice(object):
 
     Example Usage:
 
-    dev = ZaberDevice() # Automatically finds device if one available
-    dev = ZaberDevice('/dev/ttyUSB0') # Linux
-    dev = ZaberDevice('/dev/tty.usbmodem262471') # Mac OS X
-    dev = ZaberDevice('COM3') # Windows
+    dev = ZaberDevice() # Might automatically find device if one available
+    # if it is not found automatically, specify port directly
+    dev = ZaberDevice(port='/dev/ttyUSB0') # Linux
+    dev = ZaberDevice(port='/dev/tty.usbmodem262471') # Mac OS X
+    dev = ZaberDevice(port='COM3') # Windows
     dev.get_actuator_count()
     2
     dev.get_position()
@@ -549,7 +550,11 @@ class ZaberDevices(dict):
     connecting each device one by one and using the set_serial_number
     method on each device.
     Example Usage:
-    devs = ZaberDevices()  # Automatically finds all available devices
+    devs = ZaberDevices()  # Might automatically find all available devices
+    # if they are not found automatically, specify ports to use
+    devs = ZaberDevices(use_ports=['/dev/ttyUSB0','/dev/ttyUSB1']) # Linux
+    devs = ZaberDevices(use_ports=['/dev/tty.usbmodem262471','/dev/tty.usbmodem262472']) # Mac OS X
+    devs = ZaberDevices(use_ports=['COM3','COM4']) # Windows
     devs.keys()
     dev = devs[serial_number]
     '''
@@ -574,7 +579,11 @@ class ZaberStage(object):
     ZaberStage contains an instance of ZaberDevices and adds
     methods to it to use it as an xyz stage.
     Example Usage:
-    stage = ZaberStage() # Automatically finds devices if available
+    stage = ZaberStage()  # Might automatically find all available devices
+    # if they are not found automatically, specify ports to use
+    stage = ZaberStage(use_ports=['/dev/ttyUSB0','/dev/ttyUSB1']) # Linux
+    stage = ZaberStage(use_ports=['/dev/tty.usbmodem262471','/dev/tty.usbmodem262472']) # Mac OS X
+    stage = ZaberStage(use_ports=['COM3','COM4']) # Windows
     stage.get_aliases()
     {123: [10, 11]}
     serial_number = 123
