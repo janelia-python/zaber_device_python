@@ -295,6 +295,8 @@ class ZaberDevice(object):
         '''
         Moves the actuator to the position specified in microsteps.
         '''
+        if position < 0:
+            return
         self._send_request(20,actuator,position)
 
     def get_actuator_count(self):
@@ -644,6 +646,9 @@ class ZaberStage(object):
         self._x_microstep_size = 1
         self._y_microstep_size = 1
         self._z_microstep_size = 1
+        self._x_travel = None
+        self._y_travel = None
+        self._z_travel = None
 
     def get_aliases(self):
         '''
@@ -968,6 +973,84 @@ class ZaberStage(object):
 
     def get_z_microstep_size(self):
         return self._z_microstep_size
+
+    def _set_travel(self,axis,travel):
+        try:
+            travel = float(travel)
+            if axis == 'x':
+                self._x_travel = travel
+            elif axis == 'y':
+                self._y_travel = travel
+            elif axis == 'z':
+                self._z_travel = travel
+        except:
+            pass
+
+    def set_x_travel(self,travel):
+        self._set_travel('x',travel)
+
+    def set_y_travel(self,travel):
+        self._set_travel('y',travel)
+
+    def set_z_travel(self,travel):
+        self._set_travel('z',travel)
+
+    def get_x_travel(self):
+        return self._x_travel
+
+    def get_y_travel(self):
+        return self._y_travel
+
+    def get_z_travel(self):
+        return self._z_travel
+
+    def _move_absolute_percent(self,axis,percent):
+        percent = float(percent)
+        if axis == 'x':
+            if self._x_travel is not None:
+                position = self._x_travel*(percent/100)
+                self.move_x_absolute(position)
+        elif axis == 'y':
+            if self._y_travel is not None:
+                position = self._y_travel*(percent/100)
+                self.move_y_absolute(position)
+        elif axis == 'z':
+            if self._z_travel is not None:
+                position = self._z_travel*(percent/100)
+                self.move_z_absolute(position)
+
+    def move_x_absolute_percent(self,percent):
+        self._move_absolute_percent('x',percent)
+
+    def move_y_absolute_percent(self,percent):
+        self._move_absolute_percent('y',percent)
+
+    def move_z_absolute_percent(self,percent):
+        self._move_absolute_percent('z',percent)
+
+    def _move_relative_percent(self,axis,percent):
+        percent = float(percent)
+        if axis == 'x':
+            if self._x_travel is not None:
+                position = self._x_travel*(percent/100)
+                self.move_x_relative(position)
+        elif axis == 'y':
+            if self._y_travel is not None:
+                position = self._y_travel*(percent/100)
+                self.move_y_relative(position)
+        elif axis == 'z':
+            if self._z_travel is not None:
+                position = self._z_travel*(percent/100)
+                self.move_z_relative(position)
+
+    def move_x_relative_percent(self,percent):
+        self._move_relative_percent('x',percent)
+
+    def move_y_relative_percent(self,percent):
+        self._move_relative_percent('y',percent)
+
+    def move_z_relative_percent(self,percent):
+        self._move_relative_percent('z',percent)
 
 
 def find_zaber_device_ports(baudrate=None,

@@ -200,6 +200,40 @@ stage.get_y_microstep_size()
 0.00049609375
 ```
 
+###Find Travel
+
+[Lookup Zaber Device Name from Device ID](http://www.zaber.com/support/?tab=ID%20Mapping#tabs)
+
+Example: 4452 = T-LSR450B
+
+[Search for Zaber Device Name to find Detailed Specs](http://zaber.com/products/)
+
+Find 'Travel Range'
+
+Example: T-LSR450B = 450mm
+
+###Set Travel
+
+Example: T-LSR450B = 450mm
+
+```python
+stage = ZaberStage() # Automatically finds devices if available
+stage.get_aliases()
+{123: [10, 11]}
+stage.set_x_axis(123,10)
+stage.set_y_axis(123,11)
+stage.set_x_travel(450)
+stage.get_x_travel()
+450
+stage.set_y_travel(450)
+stage.get_y_travel()
+450
+stage.move_x_absolute_percent(50)
+stage.move_x_relative_percent(-25)
+stage.move_y_absolute_percent(25)
+stage.move_x_relative_percent(25)
+```
+
 ##Installation
 
 [Setup Python](https://github.com/janelia-pypi/python_setup)
