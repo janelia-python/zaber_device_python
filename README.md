@@ -157,6 +157,7 @@ dev.set_alias(3,11)
 ###Find Actuator ID
 
 ```python
+from zaber_device import ZaberStage
 stage = ZaberStage() # Automatically finds devices if available
 stage.get_aliases()
 {123: [10, 11]}
@@ -187,6 +188,7 @@ Example: T-LSR450B = 0.49609375 µm
 To set units of mm, set microstep_size to 0.49609375e-3
 
 ```python
+from zaber_device import ZaberStage
 stage = ZaberStage() # Automatically finds devices if available
 stage.get_aliases()
 {123: [10, 11]}
@@ -217,21 +219,33 @@ Example: T-LSR450B = 450mm
 Example: T-LSR450B = 450mm
 
 ```python
+from zaber_device import ZaberStage
 stage = ZaberStage() # Automatically finds devices if available
 stage.get_aliases()
 {123: [10, 11]}
 stage.set_x_axis(123,10)
 stage.set_y_axis(123,11)
+stage.set_x_microstep_size(0.49609375e-3)
+stage.set_y_microstep_size(0.49609375e-3)
 stage.set_x_travel(450)
 stage.get_x_travel()
-450
+450.0
 stage.set_y_travel(450)
 stage.get_y_travel()
-450
+450.0
+stage.home()
 stage.move_x_absolute_percent(50)
+stage.get_positions()
+(224.99984765625, 0.0, 0)
+stage.get_positions_percent()
+(49.99996614583334, 0.0, 0)
 stage.move_x_relative_percent(-25)
 stage.move_y_absolute_percent(25)
-stage.move_x_relative_percent(25)
+stage.move_y_relative_percent(25)
+stage.get_positions()
+(112.500171875, 224.9993515625, 0)
+stage.get_positions_percent()
+(25.000038194444446, 49.99985590277778, 0)
 ```
 
 ##Installation

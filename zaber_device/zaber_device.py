@@ -1052,6 +1052,22 @@ class ZaberStage(object):
     def move_z_relative_percent(self,percent):
         self._move_relative_percent('z',percent)
 
+    def get_positions_percent(self):
+        positions = self.get_positions()
+        if self._x_travel is not None:
+            x_percent = (100*positions[0])/self._x_travel
+        else:
+            x_percent = 0
+        if self._y_travel is not None:
+            y_percent = (100*positions[1])/self._y_travel
+        else:
+            y_percent = 0
+        if self._z_travel is not None:
+            z_percent = (100*positions[2])/self._z_travel
+        else:
+            z_percent = 0
+        return x_percent,y_percent,z_percent
+
 
 def find_zaber_device_ports(baudrate=None,
                             try_ports=None,
