@@ -395,14 +395,98 @@ class ZaberDevice(object):
         response = self._map_list(response,ZABER_CURRENT_MIN,ZABER_CURRENT_MAX,CURRENT_MIN,CURRENT_MAX)
         return response
 
+    def _set_actuator_mode(self,mode,actuator=None):
+        '''
+        Sets the mode for the given actuator.
+        '''
+        self._send_request(40,actuator,mode)
+
     def _get_actuator_mode(self):
         '''
-        Returns the mode for the given actuator.
+        Returns the mode.
+        '''
+        actuator = None
+        response = self._return_setting(40,actuator)
+        return response
+
+    def get_actuator_mode(self):
+        '''
+        Returns the mode as binary string.
         '''
         actuator = None
         response = self._return_setting(40,actuator)
         response = ["{0:b}".format(r) for r in response]
         return response
+
+    def _set_actuator_mode_bit(self,bit,actuator=None):
+        '''
+        Sets the mode bit high, leaving all other mode bits unchanged.
+        '''
+        mode_list = self._get_actuator_mode()
+        if actuator is None:
+            mode = mode_list[0]
+        else:
+            actuator = int(actuator)
+            mode = mode_list[actuator]
+        mode |= 1 << bit
+        self._set_actuator_mode(mode,actuator)
+
+    def _clear_actuator_mode_bit(self,bit,actuator=None):
+        '''
+        Sets the mode bit low, leaving all other mode bits unchanged.
+        '''
+        mode_list = self._get_actuator_mode()
+        if actuator is None:
+            mode = mode_list[0]
+        else:
+            actuator = int(actuator)
+            mode = mode_list[actuator]
+        mode &= ~(1 << bit)
+        self._set_actuator_mode(mode,actuator)
+
+    def disable_potentiometer(self,actuator=None):
+        '''
+        Disables the potentiometer preventing manual adjustment.
+        '''
+        self._set_actuator_mode_bit(3,actuator)
+
+    def enable_potentiometer(self,actuator=None):
+        '''
+        Enables the potentiometer allowing manual adjustment.
+        '''
+        self._clear_actuator_mode_bit(3,actuator)
+
+    def disable_power_led(self,actuator=None):
+        '''
+        Disables the green power LED.
+        '''
+        self._set_actuator_mode_bit(14,actuator)
+
+    def enable_power_led(self,actuator=None):
+        '''
+        Enables the green power LED.
+        '''
+        self._clear_actuator_mode_bit(14,actuator)
+
+    def disable_serial_led(self,actuator=None):
+        '''
+        Disables the green serial LED.
+        '''
+        self._set_actuator_mode_bit(15,actuator)
+
+    def enable_serial_led(self,actuator=None):
+        '''
+        Enables the green serial LED.
+        '''
+        self._clear_actuator_mode_bit(15,actuator)
+
+    def homed(self):
+        '''
+        Returns home status.
+        '''
+        mode_list = self._get_actuator_mode()
+        home_status_list = [((1 << 7) & mode) for mode in mode_list]
+        return [bool(home_status) for home_status in home_status_list]
 
     def set_home_speed(self,speed,actuator=None):
         '''
@@ -416,20 +500,6 @@ class ZaberDevice(object):
         '''
         actuator = None
         response = self._return_setting(41,actuator)
-        return response
-
-    def set_home_offset(self,offset,actuator=None):
-        '''
-        Sets the the new "Home" position which can then be used when the Home command is issued. 
-        '''
-        self._send_request(47,actuator,offset)
-
-    def get_home_offset(self):
-        '''
-        Returns the offset to which the actuator moves when using the "Home" command.
-        '''
-        actuator = None
-        response = self._return_setting(47,actuator)
         return response
 
     def set_target_speed(self,speed,actuator=None):
@@ -458,6 +528,20 @@ class ZaberDevice(object):
         '''
         actuator = None
         response = self._return_setting(43,actuator)
+        return response
+
+    def set_home_offset(self,offset,actuator=None):
+        '''
+        Sets the the new "Home" position which can then be used when the Home command is issued. 
+        '''
+        self._send_request(47,actuator,offset)
+
+    def get_home_offset(self):
+        '''
+        Returns the offset to which the actuator moves when using the "Home" command.
+        '''
+        actuator = None
+        response = self._return_setting(47,actuator)
         return response
 
     def get_alias(self):
@@ -548,28 +632,6 @@ class ZaberDevice(object):
         response = response[0]
         response = response >> 8
         return response
-
-    def _set_device_mode(self,mode,actuator=None):
-        '''
-        Sets the Mode for the given device.
-        '''
-        self._send_request(40,actuator,mode)
-
-    def _get_device_mode(self):
-        '''
-        Gets the Mode for the given device.
-        '''
-        actuator = None
-        response = self._return_setting(40,actuator)
-        return response
-
-    def _set_device_mode_bit(self,bit,actuator=None):
-        '''
-        Sets the Mode bit high, leaving all other Mode bits unchanged.
-        '''
-        mode_list = self._get_device_mode()
-        mode &= 1 << bit
-        self._set_device_mode(mode_actuator)
 
     def _map_list(self,x_list,in_min,in_max,out_min,out_max):
         return [int((x-in_min)*(out_max-out_min)/(in_max-in_min)+out_min) for x in x_list]
