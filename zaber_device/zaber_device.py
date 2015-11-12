@@ -37,7 +37,6 @@ ALIAS_MAX = 98
 POSITION_ADDRESS_MIN = 0
 POSITION_ADDRESS_MAX = 15
 SERIAL_NUMBER_ADDRESS = 123
-RESPONSE_ATTEMPTS_MAX = 2
 
 class ZaberError(Exception):
     def __init__(self,value):
@@ -222,16 +221,13 @@ class ZaberDevice(object):
         args_list = self._data_to_args_list(data)
         request = self._args_to_request(actuator,command,*args_list)
         self._debug_print('request', [ord(c) for c in request])
-        tries = 0
-        while tries < RESPONSE_ATTEMPTS_MAX:
-            tries += 1
-            try:
-                response = self._serial_device.write_read(request,use_readline=False,check_write_freq=True)
-                self._debug_print('response', [ord(c) for c in response])
-                data = self._response_to_data(response)
-                self._debug_print('data', data)
-            except ZaberNumberingError:
-                raise ZaberError('Improper actuator number detected in response, may need to rearrange zaber cables or use renumber method to fix.')
+        try:
+            response = self._serial_device.write_read(request,use_readline=False,check_write_freq=True)
+            self._debug_print('response', [ord(c) for c in response])
+            data = self._response_to_data(response)
+            self._debug_print('data', data)
+        except ZaberNumberingError:
+            raise ZaberError('Improper actuator number detected in response, may need to rearrange zaber cables or use renumber method to fix.')
         self._lock.release()
         return data
 
@@ -897,6 +893,26 @@ class ZaberStage(object):
         for serial_number in self._devs:
             dev = self._devs[serial_number]
             dev.home()
+
+    def homed(self):
+        homed_dict = {}
+        for serial_number in self._devs:
+            dev = self._devs[serial_number]
+            homed = dev.homed()
+            homed_dict[serial_number] = homed
+        if self._x_axis is not None:
+            x_homed = homed_dict[serial_number][self._x_axis['actuator']]
+        else:
+            x_homed = True
+        if self._y_axis is not None:
+            y_homed = homed_dict[serial_number][self._y_axis['actuator']]
+        else:
+            y_homed = True
+        if self._z_axis is not None:
+            z_homed = homed_dict[serial_number][self._z_axis['actuator']]
+        else:
+            z_homed = True
+        return x_homed,y_homed,z_homed
 
     def stop(self):
         for serial_number in self._devs:
