@@ -418,6 +418,20 @@ class ZaberDevice(object):
         response = self._return_setting(41,actuator)
         return response
 
+    def set_home_offset(self,offset,actuator=None):
+        '''
+        Sets the the new "Home" position which can then be used when the Home command is issued. 
+        '''
+        self._send_request(47,actuator,offset)
+
+    def get_home_offset(self):
+        '''
+        Returns the offset to which the actuator moves when using the "Home" command.
+        '''
+        actuator = None
+        response = self._return_setting(47,actuator)
+        return response
+
     def set_target_speed(self,speed,actuator=None):
         '''
         Sets the speed at which the actuator moves when using "move_absolute" or "move_relative" commands.
@@ -534,6 +548,28 @@ class ZaberDevice(object):
         response = response[0]
         response = response >> 8
         return response
+
+    def _set_device_mode(self,mode,actuator=None):
+        '''
+        Sets the Mode for the given device.
+        '''
+        self._send_request(40,actuator,mode)
+
+    def _get_device_mode(self):
+        '''
+        Gets the Mode for the given device.
+        '''
+        actuator = None
+        response = self._return_setting(40,actuator)
+        return response
+
+    def _set_device_mode_bit(self,bit,actuator=None):
+        '''
+        Sets the Mode bit high, leaving all other Mode bits unchanged.
+        '''
+        mode_list = self._get_device_mode()
+        mode &= 1 << bit
+        self._set_device_mode(mode_actuator)
 
     def _map_list(self,x_list,in_min,in_max,out_min,out_max):
         return [int((x-in_min)*(out_max-out_min)/(in_max-in_min)+out_min) for x in x_list]
