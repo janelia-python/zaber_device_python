@@ -37,6 +37,7 @@ ALIAS_MAX = 98
 POSITION_ADDRESS_MIN = 0
 POSITION_ADDRESS_MAX = 15
 SERIAL_NUMBER_ADDRESS = 123
+REQUEST_ATTEMPTS_MAX = 10
 
 class ZaberError(Exception):
     def __init__(self,value):
@@ -123,10 +124,12 @@ class ZaberDevice(object):
             kwargs.update({'port': port})
 
         t_start = time.time()
+        self._debug_print("port = {0}".format(kwargs['port']))
         self._serial_device = SerialDevice(*args,**kwargs)
         atexit.register(self._exit_zaber_device)
         time.sleep(self._RESET_DELAY)
         self._lock = threading.Lock()
+        self._actuator_count = None
         t_end = time.time()
         self._debug_print('Initialization time =', (t_end - t_start))
 
@@ -169,19 +172,28 @@ class ZaberDevice(object):
         self._debug_print('len(response)',len(response))
         actuator_count = len(response) // RESPONSE_LENGTH
         self._debug_print('actuator_count',actuator_count)
+        if self._actuator_count is not None:
+            if actuator_count != self._actuator_count:
+                self._debug_print("actuator_count != self._actuator_count!!")
+                raise ZaberNumberingError('')
+        elif actuator_count > 0:
+            self._actuator_count = actuator_count
         data_list = [None for d in range(actuator_count)]
         for actuator_n in range(actuator_count):
             actuator = ord(response[0+actuator_n*RESPONSE_LENGTH]) - 1
             self._debug_print('response_actuator',actuator)
-            if actuator >= actuator_count:
+            if (actuator >= actuator_count) or (actuator < 0):
+                self._debug_print("invalid actuator number!!")
                 raise ZaberNumberingError('')
-            command = ord(response[1+actuator_n*RESPONSE_LENGTH])
-            self._debug_print('response_command',command)
+            cmd = ord(response[1+actuator_n*RESPONSE_LENGTH])
+            self._debug_print('response_command',cmd)
             response_copy = response[(2+actuator_n*RESPONSE_LENGTH):(6+actuator_n*RESPONSE_LENGTH)]
             # Reply_Data = 256^3 * Rpl_Byte 6 + 256^2 * Rpl_Byte_5 + 256 * Rpl_Byte_4 + Rpl_Byte_3
             # If Rpl_Byte_6 > 127 then Reply_Data = Reply_Data - 256^4
             data = pow(256,3)*ord(response_copy[3]) + pow(256,2)*ord(response_copy[2]) + 256*ord(response_copy[1]) + ord(response_copy[0])
             data_list[actuator] = data
+        if any([data is None for data in data_list]):
+            raise ZaberNumberingError('')
         return data_list
 
     def _send_request(self,command,actuator=None,data=None):
@@ -189,20 +201,19 @@ class ZaberDevice(object):
         '''Sends request to device over serial port and
         returns number of bytes written'''
 
-        self._lock.acquire()
-        if actuator is None:
-            actuator = 0
-        elif actuator < 0:
-            raise ZaberError('actuator must be >= 0')
-        else:
-            actuator = int(actuator)
-            actuator += 1
-        args_list = self._data_to_args_list(data)
-        request = self._args_to_request(actuator,command,*args_list)
-        self._debug_print('request', [ord(c) for c in request])
-        bytes_written = self._serial_device.write_check_freq(request,delay_write=True)
-        self._debug_print('bytes_written', bytes_written)
-        self._lock.release()
+        with self._lock:
+            if actuator is None:
+                actuator = 0
+            elif actuator < 0:
+                raise ZaberError('actuator must be >= 0')
+            else:
+                actuator = int(actuator)
+                actuator += 1
+            args_list = self._data_to_args_list(data)
+            request = self._args_to_request(actuator,command,*args_list)
+            self._debug_print('request', [ord(c) for c in request])
+            bytes_written = self._serial_device.write_check_freq(request,delay_write=True)
+            self._debug_print('bytes_written', bytes_written)
         return bytes_written
 
     def _send_request_get_response(self,command,actuator=None,data=None):
@@ -210,26 +221,34 @@ class ZaberDevice(object):
         '''Sends request to device over serial port and
         returns response'''
 
-        self._lock.acquire()
-        if actuator is None:
-            actuator = 0
-        elif actuator < 0:
-            raise ZaberError('actuator must be >= 0')
+        request_successful = False
+        with self._lock:
+            if actuator is None:
+                actuator = 0
+            elif actuator < 0:
+                raise ZaberError('actuator must be >= 0')
+            else:
+                actuator = int(actuator)
+                actuator += 1
+            args_list = self._data_to_args_list(data)
+            request = self._args_to_request(actuator,command,*args_list)
+            request_attempt = 0
+            while (not request_successful) and (request_attempt < REQUEST_ATTEMPTS_MAX):
+                try:
+                    self._debug_print('request attempt: {0}'.format(request_attempt))
+                    self._debug_print('request', [ord(c) for c in request])
+                    request_attempt += 1
+                    response = self._serial_device.write_read(request,use_readline=False,check_write_freq=True)
+                    self._debug_print('response', [ord(c) for c in response])
+                    data = self._response_to_data(response)
+                    self._debug_print('data', data)
+                    request_successful = True
+                except ZaberNumberingError:
+                    self._debug_print("request error!!")
+        if not request_successful:
+            raise ZaberError('Improper actuator response, may need to rearrange zaber cables or use renumber method to fix.')
         else:
-            actuator = int(actuator)
-            actuator += 1
-        args_list = self._data_to_args_list(data)
-        request = self._args_to_request(actuator,command,*args_list)
-        self._debug_print('request', [ord(c) for c in request])
-        try:
-            response = self._serial_device.write_read(request,use_readline=False,check_write_freq=True)
-            self._debug_print('response', [ord(c) for c in response])
-            data = self._response_to_data(response)
-            self._debug_print('data', data)
-        except ZaberNumberingError:
-            raise ZaberError('Improper actuator number detected in response, may need to rearrange zaber cables or use renumber method to fix.')
-        self._lock.release()
-        return data
+            return data
 
     def close(self):
         '''
