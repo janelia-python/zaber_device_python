@@ -8,7 +8,7 @@ import os
 from exceptions import Exception
 import threading
 
-from serial_device2 import SerialDevice, SerialDevices, find_serial_device_ports, WriteFrequencyError
+from serial_device2 import SerialDevice, SerialDevices, find_serial_device_ports, WriteFrequencyError, WriteError, ReadError
 
 try:
     from pkg_resources import get_distribution, DistributionNotFound
@@ -248,8 +248,6 @@ class ZaberDevice(object):
                     request_successful = True
                 except ZaberNumberingError:
                     self._debug_print("request error!!")
-                except:
-                    continue
         if not request_successful:
             raise ZaberError('Improper actuator response, may need to rearrange zaber cables or use renumber method to fix.')
         else:
@@ -1231,7 +1229,7 @@ def find_zaber_device_ports(baudrate=None,
                         zaber_device_ports[port] = {'serial_number':s_n}
             except ZaberError as e:
                 zaber_device_ports[port] = {'serial_number':None}
-            except:
+            except ReadError:
                 continue
             dev.close()
         except (serial.SerialException, IOError):
