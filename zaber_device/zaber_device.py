@@ -248,6 +248,8 @@ class ZaberDevice(object):
                     request_successful = True
                 except ZaberNumberingError:
                     self._debug_print("request error!!")
+                except:
+                    continue
         if not request_successful:
             raise ZaberError('Improper actuator response, may need to rearrange zaber cables or use renumber method to fix.')
         else:
