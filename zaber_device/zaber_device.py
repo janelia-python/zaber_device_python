@@ -95,7 +95,6 @@ class ZaberDevice(object):
     [20000, 10000]
     '''
     _TIMEOUT = 0.05
-    _WRITE_READ_DELAY = 0.05
     _WRITE_WRITE_DELAY = 0.05
     _RESET_DELAY = 2.0
 
@@ -116,8 +115,6 @@ class ZaberDevice(object):
             kwargs.update({'baudrate': BAUDRATE})
         if 'timeout' not in kwargs:
             kwargs.update({'timeout': self._TIMEOUT})
-        if 'write_read_delay' not in kwargs:
-            kwargs.update({'write_read_delay': self._WRITE_READ_DELAY})
         if 'write_write_delay' not in kwargs:
             kwargs.update({'write_write_delay': self._WRITE_WRITE_DELAY})
         if ('port' not in kwargs) or (kwargs['port'] is None):
@@ -241,7 +238,7 @@ class ZaberDevice(object):
                     self._debug_print('request attempt: {0}'.format(request_attempt))
                     self._debug_print('request', [ord(c) for c in request])
                     request_attempt += 1
-                    response = self._serial_device.write_read(request,use_readline=False,check_write_freq=True)
+                    response = self._serial_device.write_read(request,use_readline=False,match_chars=True)
                     self._debug_print('response', [ord(c) for c in response])
                     data = self._response_to_data(response)
                     self._debug_print('data', data)
