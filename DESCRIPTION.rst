@@ -82,24 +82,24 @@ Example Usage::
     stage.moving()
     (False, False, False)
     stage.get_positions()
-    (0.0, 0.0, 0)
+    [0.0, 0.0, 0.0]
     stage.move_x_at_speed(5)
     stage.moving()
     (True, False, False)
     stage.get_positions()
-    (76.4619375, 0.0, 0)
+    [76.4619375, 0.0, 0.0]
     stage.stop_x()
     stage.moving()
     (False, False, False)
     stage.get_positions()
-    (94.38133984375, 0.0, 0)
+    [94.38133984375, 0.0, 0.0]
     stage.move_y_relative(125)
     stage.moving()
     (False, True, False)
     stage.moving()
     (False, False, False)
     stage.get_positions()
-    (94.38133984375, 124.99975, 0)
+    [94.38133984375, 124.99975, 0.0]
     stage.move_x_absolute(50)
     stage.move_y_absolute(75)
     stage.moving()
@@ -109,7 +109,7 @@ Example Usage::
     49.99980078125
     stage.move_x_relative(50)
     stage.get_positions()
-    (99.9996015625, 74.99994921875, 0)
+    [99.9996015625, 74.99994921875, 0.0]
     stage.move_to_stored_x_position(0)
     stage.get_positions()
-    (49.99980078125, 74.99994921875, 0)
+    [49.99980078125, 74.99994921875, 0.0]

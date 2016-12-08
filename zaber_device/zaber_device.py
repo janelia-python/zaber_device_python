@@ -8,7 +8,7 @@ import os
 from exceptions import Exception
 import threading
 
-from serial_device2 import SerialDevice, SerialDevices, find_serial_device_ports, WriteFrequencyError, WriteError, ReadError
+from serial_device2 import SerialDevice, SerialDevices, find_serial_device_ports
 
 try:
     from pkg_resources import get_distribution, DistributionNotFound
@@ -721,24 +721,24 @@ class ZaberStage(object):
     stage.moving()
     (False, False, False)
     stage.get_positions()
-    (0.0, 0.0, 0)
+    [0.0, 0.0, 0.0]
     stage.move_x_at_speed(5)
     stage.moving()
     (True, False, False)
     stage.get_positions()
-    (76.4619375, 0.0, 0)
+    [76.4619375, 0.0, 0.0]
     stage.stop_x()
     stage.moving()
     (False, False, False)
     stage.get_positions()
-    (94.38133984375, 0.0, 0)
+    [94.38133984375, 0.0, 0.0]
     stage.move_y_relative(125)
     stage.moving()
     (False, True, False)
     stage.moving()
     (False, False, False)
     stage.get_positions()
-    (94.38133984375, 124.99975, 0)
+    [94.38133984375, 124.99975, 0.0]
     stage.move_x_absolute(50)
     stage.move_y_absolute(75)
     stage.moving()
@@ -748,10 +748,10 @@ class ZaberStage(object):
     49.99980078125
     stage.move_x_relative(50)
     stage.get_positions()
-    (99.9996015625, 74.99994921875, 0)
+    [99.9996015625, 74.99994921875, 0.0]
     stage.move_to_stored_x_position(0)
     stage.get_positions()
-    (49.99980078125, 74.99994921875, 0)
+    [49.99980078125, 74.99994921875, 0.0]
     '''
     def __init__(self,*args,**kwargs):
         self._devs = ZaberDevices(*args,**kwargs)
@@ -871,45 +871,41 @@ class ZaberStage(object):
 
     def get_positions_and_debug_info(self):
         positions = {}
-        positions_array = [0,0,0]
         for serial_number in self._devs:
             dev = self._devs[serial_number]
-            position = dev.get_position()
+            position_microstep = dev.get_position()
             response = dev.get_zaber_response()
             positions[serial_number] = {}
             positions[serial_number]['response'] = response
-            positions[serial_number]['position_microstep'] = position
-            positions[serial_number]['position'] = positions_array
-        if self._x_axis is not None:
-            positions[serial_number]['position'][self._x_axis['actuator']] *= self._x_microstep_size
-        if self._y_axis is not None:
-            positions[serial_number]['position'][self._y_axis['actuator']] *= self._y_microstep_size
-        if self._z_axis is not None:
-            positions[serial_number]['position'][self._z_axis['actuator']] *= self._z_microstep_size
-        return positions
+            positions[serial_number]['position_microstep'] = position_microstep
+            positions[serial_number]['position'] = [0.0,0.0,0.0]
+            if self._x_axis is not None:
+                positions[serial_number]['position'][self._x_axis['actuator']] = positions[serial_number]['position_microstep'][self._x_axis['actuator']] * self._x_microstep_size
+            if self._y_axis is not None:
+                positions[serial_number]['position'][self._y_axis['actuator']] = positions[serial_number]['position_microstep'][self._y_axis['actuator']] * self._y_microstep_size
+            if self._z_axis is not None:
+                positions[serial_number]['position'][self._z_axis['actuator']] = positions[serial_number]['position_microstep'][self._z_axis['actuator']] * self._z_microstep_size
+        if len(positions == 1):
+            return positions[positions.keys()[0]]
+        else:
+            return positions
 
     def get_positions(self):
         positions = {}
         for serial_number in self._devs:
             dev = self._devs[serial_number]
-            position = dev.get_position()
-            positions[serial_number] = position
-        if self._x_axis is not None:
-            x_position = positions[serial_number][self._x_axis['actuator']]
-            x_position *= self._x_microstep_size
+            position_microstep = dev.get_position()
+            positions[serial_number] = [0.0,0.0,0.0]
+            if self._x_axis is not None:
+                positions[serial_number][self._x_axis['actuator']] = position_microstep[self._x_axis['actuator']] * self._x_microstep_size
+            if self._y_axis is not None:
+                positions[serial_number][self._y_axis['actuator']] = position_microstep[self._y_axis['actuator']] * self._y_microstep_size
+            if self._z_axis is not None:
+                positions[serial_number][self._z_axis['actuator']] = position_microstep[self._z_axis['actuator']] * self._z_microstep_size
+        if len(positions == 1):
+            return positions[positions.keys()[0]]
         else:
-            x_position = 0
-        if self._y_axis is not None:
-            y_position = positions[serial_number][self._y_axis['actuator']]
-            y_position *= self._y_microstep_size
-        else:
-            y_position = 0
-        if self._z_axis is not None:
-            z_position = positions[serial_number][self._z_axis['actuator']]
-            z_position *= self._z_microstep_size
-        else:
-            z_position = 0
-        return x_position,y_position,z_position
+            return positions
 
     def moving(self):
         movings = {}
