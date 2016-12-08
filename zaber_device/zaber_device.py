@@ -130,6 +130,7 @@ class ZaberDevice(object):
         time.sleep(self._RESET_DELAY)
         self._lock = threading.Lock()
         self._actuator_count = None
+        self._zaber_response = ''
         t_end = time.time()
         self._debug_print('Initialization time =', (t_end - t_start))
 
@@ -238,9 +239,9 @@ class ZaberDevice(object):
                     self._debug_print('request attempt: {0}'.format(request_attempt))
                     self._debug_print('request', [ord(c) for c in request])
                     request_attempt += 1
-                    response = self._serial_device.write_read(request,use_readline=False,match_chars=True)
-                    self._debug_print('response', [ord(c) for c in response])
-                    data = self._response_to_data(response)
+                    self._zaber_response = self._serial_device.write_read(request,use_readline=False,match_chars=True)
+                    self._debug_print('response', [ord(c) for c in self._zaber_response])
+                    data = self._response_to_data(self._zaber_response)
                     self._debug_print('data', data)
                     request_successful = True
                 except ZaberNumberingError:
@@ -648,6 +649,9 @@ class ZaberDevice(object):
         response = response >> 8
         return response
 
+    def get_zaber_response(self):
+        return self._zaber_response
+
     def _map_list(self,x_list,in_min,in_max,out_min,out_max):
         return [int((x-in_min)*(out_max-out_min)/(in_max-in_min)+out_min) for x in x_list]
 
@@ -864,6 +868,25 @@ class ZaberStage(object):
 
     def stop_z(self):
         self._stop('z')
+
+    def get_positions_and_debug_info(self):
+        positions = {}
+        positions_array = [0,0,0]
+        for serial_number in self._devs:
+            dev = self._devs[serial_number]
+            position = dev.get_position()
+            response = dev.get_zaber_response()
+            positions[serial_number] = {}
+            positions[serial_number]['response'] = response
+            positions[serial_number]['position_microstep'] = position
+            positions[serial_number]['position'] = positions_array
+        if self._x_axis is not None:
+            positions[serial_number]['position'][self._x_axis['actuator']] *= self._x_microstep_size
+        if self._y_axis is not None:
+            positions[serial_number]['position'][self._y_axis['actuator']] *= self._y_microstep_size
+        if self._z_axis is not None:
+            positions[serial_number]['position'][self._z_axis['actuator']] *= self._z_microstep_size
+        return positions
 
     def get_positions(self):
         positions = {}
