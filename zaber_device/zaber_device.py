@@ -8,7 +8,7 @@ import os
 from exceptions import Exception
 import threading
 
-from serial_device2 import SerialDevice, SerialDevices, find_serial_device_ports
+from serial_device2 import SerialDevice, SerialDevices, find_serial_device_ports, ReadError
 
 try:
     from pkg_resources import get_distribution, DistributionNotFound
@@ -880,12 +880,12 @@ class ZaberStage(object):
             positions[serial_number]['position_microstep'] = position_microstep
             positions[serial_number]['position'] = [0.0,0.0,0.0]
             if self._x_axis is not None:
-                positions[serial_number]['position'][self._x_axis['actuator']] = positions[serial_number]['position_microstep'][self._x_axis['actuator']] * self._x_microstep_size
+                positions[serial_number]['position'][0] = positions[serial_number]['position_microstep'][self._x_axis['actuator']] * self._x_microstep_size
             if self._y_axis is not None:
-                positions[serial_number]['position'][self._y_axis['actuator']] = positions[serial_number]['position_microstep'][self._y_axis['actuator']] * self._y_microstep_size
+                positions[serial_number]['position'][1] = positions[serial_number]['position_microstep'][self._y_axis['actuator']] * self._y_microstep_size
             if self._z_axis is not None:
-                positions[serial_number]['position'][self._z_axis['actuator']] = positions[serial_number]['position_microstep'][self._z_axis['actuator']] * self._z_microstep_size
-        if len(positions == 1):
+                positions[serial_number]['position'][2] = positions[serial_number]['position_microstep'][self._z_axis['actuator']] * self._z_microstep_size
+        if len(positions) == 1:
             return positions[positions.keys()[0]]
         else:
             return positions
@@ -897,12 +897,12 @@ class ZaberStage(object):
             position_microstep = dev.get_position()
             positions[serial_number] = [0.0,0.0,0.0]
             if self._x_axis is not None:
-                positions[serial_number][self._x_axis['actuator']] = position_microstep[self._x_axis['actuator']] * self._x_microstep_size
+                positions[serial_number][0] = position_microstep[self._x_axis['actuator']] * self._x_microstep_size
             if self._y_axis is not None:
-                positions[serial_number][self._y_axis['actuator']] = position_microstep[self._y_axis['actuator']] * self._y_microstep_size
+                positions[serial_number][1] = position_microstep[self._y_axis['actuator']] * self._y_microstep_size
             if self._z_axis is not None:
-                positions[serial_number][self._z_axis['actuator']] = position_microstep[self._z_axis['actuator']] * self._z_microstep_size
-        if len(positions == 1):
+                positions[serial_number][2] = position_microstep[self._z_axis['actuator']] * self._z_microstep_size
+        if len(positions) == 1:
             return positions[positions.keys()[0]]
         else:
             return positions
