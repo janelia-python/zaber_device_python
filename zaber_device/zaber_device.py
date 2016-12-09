@@ -239,9 +239,12 @@ class ZaberDevice(object):
                     self._debug_print('request attempt: {0}'.format(request_attempt))
                     self._debug_print('request', [ord(c) for c in request])
                     request_attempt += 1
-                    self._zaber_response = self._serial_device.write_read(request,use_readline=False,match_chars=True)
-                    self._debug_print('response', [ord(c) for c in self._zaber_response])
-                    data = self._response_to_data(self._zaber_response)
+                    response = self._serial_device.write_read(request,use_readline=False,match_chars=True)
+                    response_array = [ord(c) for c in response]
+                    response_str = str(response_array)
+                    self._debug_print('response', response_str)
+                    self._zaber_response = response_str
+                    data = self._response_to_data(response)
                     self._debug_print('data', data)
                     request_successful = True
                 except ZaberNumberingError:
