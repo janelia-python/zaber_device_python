@@ -213,7 +213,11 @@ class ZaberDevice(object):
             args_list = self._data_to_args_list(data)
             request = self._args_to_request(actuator,command,*args_list)
             self._debug_print('request', [ord(c) for c in request])
-            bytes_written = self._serial_device.write_check_freq(request,delay_write=True)
+            # bytes_written = self._serial_device.write_check_freq(request,delay_write=True)
+            response = self._serial_device.write_read(request,use_readline=False,match_chars=True)
+            response = [ord(c) for c in response]
+            bytes_written = len(response)
+            self._debug_print('response', response)
             self._debug_print('bytes_written', bytes_written)
         return bytes_written
 
