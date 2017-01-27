@@ -620,8 +620,8 @@ class ZaberDevice(object):
         response = self._send_request_get_response(55,actuator,data)
         try:
             response = response[0]
-        except TypeError:
-            pass
+        except (TypeError,IndexError):
+            response = None
         return response
 
     def get_position(self):
