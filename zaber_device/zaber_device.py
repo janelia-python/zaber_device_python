@@ -888,14 +888,18 @@ class ZaberStage(object):
             response = dev.get_zaber_response()
             positions[serial_number] = {}
             positions[serial_number]['response'] = response
-            positions[serial_number]['position_microstep'] = position_microstep
+            positions[serial_number]['position_microstep'] = [0,0,0]
             positions[serial_number]['position'] = [0.0,0.0,0.0]
+            positions[serial_number]['position_time'] = time.time()
             if self._x_axis is not None:
-                positions[serial_number]['position'][0] = positions[serial_number]['position_microstep'][self._x_axis['actuator']] * self._x_microstep_size
+                positions[serial_number]['position'][0] = position_microstep[self._x_axis['actuator']] * self._x_microstep_size
+                positions[serial_number]['position_microstep'][0] = position_microstep[self._x_axis['actuator']]
             if self._y_axis is not None:
-                positions[serial_number]['position'][1] = positions[serial_number]['position_microstep'][self._y_axis['actuator']] * self._y_microstep_size
+                positions[serial_number]['position'][1] = position_microstep[self._y_axis['actuator']] * self._y_microstep_size
+                positions[serial_number]['position_microstep'][1] = position_microstep[self._y_axis['actuator']]
             if self._z_axis is not None:
-                positions[serial_number]['position'][2] = positions[serial_number]['position_microstep'][self._z_axis['actuator']] * self._z_microstep_size
+                positions[serial_number]['position'][2] = position_microstep[self._z_axis['actuator']] * self._z_microstep_size
+                positions[serial_number]['position_microstep'][2] = position_microstep[self._z_axis['actuator']]
         if len(positions) == 1:
             return positions[positions.keys()[0]]
         else:
