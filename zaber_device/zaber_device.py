@@ -890,7 +890,7 @@ class ZaberStage(object):
             positions[serial_number]['response'] = response
             positions[serial_number]['position_microstep'] = [0,0,0]
             positions[serial_number]['position'] = [0.0,0.0,0.0]
-            positions[serial_number]['position_time'] = time.time()
+            positions[serial_number]['response_time'] = time.time()
             if self._x_axis is not None:
                 positions[serial_number]['position'][0] = position_microstep[self._x_axis['actuator']] * self._x_microstep_size
                 positions[serial_number]['position_microstep'][0] = position_microstep[self._x_axis['actuator']]
