@@ -1,4 +1,4 @@
-#zaber_device_python
+# zaber_device_python
 
 This Python package (zaber\_device) creates a class named ZaberDevice,
 which contains an instance of serial\_device2.SerialDevice and adds
@@ -12,7 +12,7 @@ License:
 
 BSD
 
-##Example Usage
+## Example Usage
 
 ```python
 from zaber_device import ZaberDevice
@@ -121,7 +121,7 @@ stage.get_positions()
 [49.99980078125, 74.99994921875, 0.0]
 ```
 
-##First Time Device Setup
+## First Time Device Setup
 
 ```shell
 ipython
@@ -134,7 +134,7 @@ dev.restore_settings()
 dev.renumber()
 ```
 
-##First Time Stage Setup Example
+## First Time Stage Setup Example
 
 ```shell
 ipython
@@ -152,9 +152,9 @@ dev.set_alias(2,11)
 dev.set_alias(3,11)
 ```
 
-##Setting Zaber Stage Units
+## Setting Zaber Stage Units
 
-###Find Actuator ID
+### Find Actuator ID
 
 ```python
 from zaber_device import ZaberStage
@@ -167,7 +167,7 @@ stage.get_actuator_ids()
 (4452, 4452, None)
 ```
 
-###Find Microstep Size
+### Find Microstep Size
 
 [Lookup Zaber Device Name from Device ID](http://www.zaber.com/support/?tab=ID%20Mapping#tabs)
 
@@ -179,7 +179,7 @@ Find 'Microstep Size (Default Resolution)'
 
 Example: T-LSR450B = 0.49609375 µm
 
-###Set Microstep Size
+### Set Microstep Size
 
 Example: T-LSR450B = 0.49609375 µm
 
@@ -202,7 +202,7 @@ stage.get_y_microstep_size()
 0.00049609375
 ```
 
-###Find Travel
+### Find Travel
 
 [Lookup Zaber Device Name from Device ID](http://www.zaber.com/support/?tab=ID%20Mapping#tabs)
 
@@ -214,7 +214,7 @@ Find 'Travel Range'
 
 Example: T-LSR450B = 450mm
 
-###Set Travel
+### Set Travel
 
 Example: T-LSR450B = 450mm
 
@@ -248,11 +248,11 @@ stage.get_positions_percent()
 (25.000038194444446, 49.99985590277778, 0.0)
 ```
 
-##Installation
+## Installation
 
 [Setup Python](https://github.com/janelia-pypi/python_setup)
 
-###Linux and Mac OS X
+### Linux and Mac OS X
 
 ```shell
 mkdir -p ~/virtualenvs/zaber_device
@@ -261,7 +261,7 @@ source ~/virtualenvs/zaber_device/bin/activate
 pip install zaber_device
 ```
 
-###Windows
+### Windows
 
 ```shell
 virtualenv C:\virtualenvs\zaber_device
