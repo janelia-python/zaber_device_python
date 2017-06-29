@@ -67,8 +67,7 @@ setup(
     # project is installed. For an analysis of "install_requires" vs pip's
     # requirements files see:
     # https://packaging.python.org/en/latest/technical.html#install-requires-vs-requirements-files
-    install_requires=['pyserial',
-                      'serial_device2',
+    install_requires=['serial_device2>=2',
     ],
 
     # If there are data files included in your packages that need to be
