@@ -97,6 +97,7 @@ class ZaberDevice(object):
     _TIMEOUT = 0.05
     _WRITE_WRITE_DELAY = 0.05
     _RESET_DELAY = 2.0
+    _INTER_BYTE_TIMEOUT = 0.01
 
     def __init__(self,*args,**kwargs):
         if 'debug' in kwargs:
@@ -115,6 +116,8 @@ class ZaberDevice(object):
             kwargs.update({'baudrate': BAUDRATE})
         if 'timeout' not in kwargs:
             kwargs.update({'timeout': self._TIMEOUT})
+        if 'inter_byte_timeout' not in kwargs:
+            kwargs.update({'inter_byte_timeout': self._INTER_BYTE_TIMEOUT})
         if 'write_write_delay' not in kwargs:
             kwargs.update({'write_write_delay': self._WRITE_WRITE_DELAY})
         if ('port' not in kwargs) or (kwargs['port'] is None):
@@ -129,7 +132,7 @@ class ZaberDevice(object):
         atexit.register(self._exit_zaber_device)
         time.sleep(self._RESET_DELAY)
         self._lock = threading.Lock()
-        self._actuator_count = None
+        self._actuator_count = find_actuator_count()
         self._zaber_response = ''
         t_end = time.time()
         self._debug_print('Initialization time =', (t_end - t_start))
@@ -177,8 +180,6 @@ class ZaberDevice(object):
             if actuator_count != self._actuator_count:
                 self._debug_print("actuator_count != self._actuator_count!!")
                 raise ZaberNumberingError('')
-        elif actuator_count > 0:
-            self._actuator_count = actuator_count
         data_list = [None for d in range(actuator_count)]
         for actuator_n in range(actuator_count):
             actuator = ord(response[0+actuator_n*RESPONSE_LENGTH]) - 1
@@ -213,16 +214,10 @@ class ZaberDevice(object):
             args_list = self._data_to_args_list(data)
             request = self._args_to_request(actuator,command,*args_list)
             self._debug_print('request', [ord(c) for c in request])
-            # bytes_written = self._serial_device.write_check_freq(request,delay_write=True)
-            bytes_written = 0
-            try:
-                response = self._serial_device.write_read(request,use_readline=False,match_chars=True)
-                response = [ord(c) for c in response]
-                bytes_written = len(response)
-                self._debug_print('response', response)
-                self._debug_print('bytes_written', bytes_written)
-            except ReadError:
-                self._debug_print('no response')
+            self._serial_device.reset_output_buffer()
+            bytes_written = self._serial_device.write_check_freq(request,delay_write=True)
+            self._debug_print('bytes_written', bytes_written)
+            self._serial_device.reset_input_buffer()
         return bytes_written
 
     def _send_request_get_response(self,command,actuator=None,data=None):
@@ -241,13 +236,14 @@ class ZaberDevice(object):
                 actuator += 1
             args_list = self._data_to_args_list(data)
             request = self._args_to_request(actuator,command,*args_list)
+            read_bytes = self._actuator_count*RESPONSE_LENGTH
             request_attempt = 0
             while (not request_successful) and (request_attempt < REQUEST_ATTEMPTS_MAX):
                 try:
                     self._debug_print('request attempt: {0}'.format(request_attempt))
                     self._debug_print('request', [ord(c) for c in request])
                     request_attempt += 1
-                    response = self._serial_device.write_read(request,use_readline=False,match_chars=True)
+                    response = self._serial_device.write_read(request,use_readline=False,read=read_bytes)
                     response_array = [ord(c) for c in response]
                     response_str = str(response_array)
                     self._debug_print('response', response_str)
@@ -326,18 +322,41 @@ class ZaberDevice(object):
             return
         self._send_request(20,actuator,position)
 
+    def find_actuator_count(self):
+        '''
+        Find the number of Zaber actuators connected in a chain.
+        '''
+        data = 123
+        actuator = 0
+        command = 55
+        with self._lock:
+            args_list = self._data_to_args_list(data)
+            request = self._args_to_request(actuator,command,*args_list)
+            self._debug_print('request', [ord(c) for c in request])
+            actuator_count = None
+            request_attempt = 0
+            while (actuator_count is None) and (request_attempt < REQUEST_ATTEMPTS_MAX):
+                response = self._serial_device.write_read(request,use_readline=False)
+                self._debug_print('len(response)',len(response))
+                request_attempt += 1
+                if (len(response) % RESPONSE_LENGTH) == 0:
+                    actuator_count = len(response) // RESPONSE_LENGTH
+        if actuator_count is None:
+            actuator_count = 0
+        self._debug_print('actuator_count',actuator_count)
+        return actuator_count
+
     def get_actuator_count(self):
         '''
         Return the number of Zaber actuators connected in a chain.
         '''
-        data = 123
-        actuator = None
-        response = self._send_request_get_response(55,actuator,data)
-        try:
-            actuator_count = len(response)
-        except TypeError:
-            actuator_count = 1
-        return actuator_count
+        return self._actuator_count
+
+    def set_actuator_count(self,actuator_count):
+        '''
+        Set the number of Zaber actuators connected in a chain.
+        '''
+        self._actuator_count = actuator_count
 
     def move_relative(self,position,actuator=None):
         '''
