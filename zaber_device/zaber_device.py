@@ -38,6 +38,7 @@ POSITION_ADDRESS_MIN = 0
 POSITION_ADDRESS_MAX = 15
 SERIAL_NUMBER_ADDRESS = 123
 REQUEST_ATTEMPTS_MAX = 10
+READ_SIZE = RESPONSE_LENGTH*8
 
 class ZaberError(Exception):
     def __init__(self,value):
@@ -236,17 +237,13 @@ class ZaberDevice(object):
                 actuator += 1
             args_list = self._data_to_args_list(data)
             request = self._args_to_request(actuator,command,*args_list)
-            read_size = None
-            if self._actuator_count is not None:
-                read_size = self._actuator_count*RESPONSE_LENGTH
             request_attempt = 0
             while (not request_successful) and (request_attempt < REQUEST_ATTEMPTS_MAX):
                 try:
                     self._debug_print('request attempt: {0}'.format(request_attempt))
                     self._debug_print('request', [ord(c) for c in request])
                     request_attempt += 1
-                    # response = self._serial_device.write_read(request,use_readline=False,match_chars=True,size=read_size)
-                    response = self._serial_device.write_read(request,use_readline=False,size=read_size)
+                    response = self._serial_device.write_read(request,use_readline=False,size=READ_SIZE)
                     response_array = [ord(c) for c in response]
                     response_str = str(response_array)
                     self._debug_print('response', response_str)
@@ -339,7 +336,7 @@ class ZaberDevice(object):
             actuator_count = None
             request_attempt = 0
             while (actuator_count is None) and (request_attempt < REQUEST_ATTEMPTS_MAX):
-                response = self._serial_device.write_read(request,use_readline=False)
+                response = self._serial_device.write_read(request,use_readline=False,size=READ_SIZE)
                 self._debug_print('len(response)',len(response))
                 request_attempt += 1
                 if (len(response) % RESPONSE_LENGTH) == 0:
@@ -581,7 +578,7 @@ class ZaberDevice(object):
 
     def set_home_offset(self,offset,actuator=None):
         '''
-        Sets the the new "Home" position which can then be used when the Home command is issued. 
+        Sets the the new "Home" position which can then be used when the Home command is issued.
         '''
         self._send_request(47,actuator,offset)
 
@@ -714,7 +711,7 @@ class ZaberDevices(dict):
         if ('use_ports' not in kwargs) or (kwargs['use_ports'] is None):
             zaber_device_ports = find_zaber_device_ports(*args,**kwargs)
         else:
-            zaber_device_ports = use_ports
+            zaber_device_ports = kwargs.pop('use_ports')
 
         for port in zaber_device_ports:
             kwargs.update({'port': port})
