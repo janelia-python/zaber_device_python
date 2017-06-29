@@ -132,7 +132,7 @@ class ZaberDevice(object):
         atexit.register(self._exit_zaber_device)
         time.sleep(self._RESET_DELAY)
         self._lock = threading.Lock()
-        self._actuator_count = find_actuator_count()
+        self._actuator_count = None
         self._zaber_response = ''
         t_end = time.time()
         self._debug_print('Initialization time =', (t_end - t_start))
@@ -236,14 +236,17 @@ class ZaberDevice(object):
                 actuator += 1
             args_list = self._data_to_args_list(data)
             request = self._args_to_request(actuator,command,*args_list)
-            read_bytes = self._actuator_count*RESPONSE_LENGTH
+            read_size = None
+            if self._actuator_count is not None:
+                read_size = self._actuator_count*RESPONSE_LENGTH
             request_attempt = 0
             while (not request_successful) and (request_attempt < REQUEST_ATTEMPTS_MAX):
                 try:
                     self._debug_print('request attempt: {0}'.format(request_attempt))
                     self._debug_print('request', [ord(c) for c in request])
                     request_attempt += 1
-                    response = self._serial_device.write_read(request,use_readline=False,read=read_bytes)
+                    # response = self._serial_device.write_read(request,use_readline=False,match_chars=True,size=read_size)
+                    response = self._serial_device.write_read(request,use_readline=False,size=read_size)
                     response_array = [ord(c) for c in response]
                     response_str = str(response_array)
                     self._debug_print('response', response_str)
