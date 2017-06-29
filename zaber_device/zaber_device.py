@@ -98,7 +98,6 @@ class ZaberDevice(object):
     _TIMEOUT = 0.05
     _WRITE_WRITE_DELAY = 0.05
     _RESET_DELAY = 2.0
-    _INTER_BYTE_TIMEOUT = 0.01
 
     def __init__(self,*args,**kwargs):
         if 'debug' in kwargs:
@@ -117,8 +116,6 @@ class ZaberDevice(object):
             kwargs.update({'baudrate': BAUDRATE})
         if 'timeout' not in kwargs:
             kwargs.update({'timeout': self._TIMEOUT})
-        if 'inter_byte_timeout' not in kwargs:
-            kwargs.update({'inter_byte_timeout': self._INTER_BYTE_TIMEOUT})
         if 'write_write_delay' not in kwargs:
             kwargs.update({'write_write_delay': self._WRITE_WRITE_DELAY})
         if ('port' not in kwargs) or (kwargs['port'] is None):
