@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from __future__ import print_function, division
+
 import serial
 import time
 import atexit
@@ -8,7 +8,7 @@ import os
 from exceptions import Exception
 import threading
 
-from serial_device2 import SerialDevice, SerialDevices, find_serial_device_ports, ReadError
+from serial_interface import SerialInterface, SerialInterfaces, find_serial_interface_ports, WriteFrequencyError
 
 try:
     from pkg_resources import get_distribution, DistributionNotFound
@@ -55,7 +55,7 @@ class ZaberNumberingError(Exception):
 class ZaberDevice(object):
     '''
     This Python package (zaber_device) creates a class named ZaberDevice,
-    which contains an instance of serial_device2.SerialDevice and adds
+    which contains an instance of serial_interface.SerialInterface and adds
     methods to it to interface to Zaber motorized linear slides.
 
     Example Usage:
@@ -126,7 +126,7 @@ class ZaberDevice(object):
 
         t_start = time.time()
         self._debug_print("port = {0}".format(kwargs['port']))
-        self._serial_device = SerialDevice(*args,**kwargs)
+        self._serial_interface = SerialInterface(*args,**kwargs)
         atexit.register(self._exit_zaber_device)
         time.sleep(self._RESET_DELAY)
         self._lock = threading.Lock()
@@ -212,10 +212,10 @@ class ZaberDevice(object):
             args_list = self._data_to_args_list(data)
             request = self._args_to_request(actuator,command,*args_list)
             self._debug_print('request', [ord(c) for c in request])
-            self._serial_device.reset_output_buffer()
-            bytes_written = self._serial_device.write_check_freq(request,delay_write=True)
+            self._serial_interface.reset_output_buffer()
+            bytes_written = self._serial_interface.write_check_freq(request,delay_write=True)
             self._debug_print('bytes_written', bytes_written)
-            self._serial_device.reset_input_buffer()
+            self._serial_interface.reset_input_buffer()
         return bytes_written
 
     def _send_request_get_response(self,command,actuator=None,data=None):
@@ -240,7 +240,7 @@ class ZaberDevice(object):
                     self._debug_print('request attempt: {0}'.format(request_attempt))
                     self._debug_print('request', [ord(c) for c in request])
                     request_attempt += 1
-                    response = self._serial_device.write_read(request,use_readline=False,size=READ_SIZE)
+                    response = self._serial_interface.write_read(request,use_readline=False,size=READ_SIZE)
                     response_array = [ord(c) for c in response]
                     response_str = str(response_array)
                     self._debug_print('response', response_str)
@@ -259,10 +259,10 @@ class ZaberDevice(object):
         '''
         Close the device serial port.
         '''
-        self._serial_device.close()
+        self._serial_interface.close()
 
     def get_port(self):
-        return self._serial_device.port
+        return self._serial_interface.port
 
     def reset(self,actuator=None):
         '''
@@ -333,7 +333,7 @@ class ZaberDevice(object):
             actuator_count = None
             request_attempt = 0
             while (actuator_count is None) and (request_attempt < REQUEST_ATTEMPTS_MAX):
-                response = self._serial_device.write_read(request,use_readline=False,size=READ_SIZE)
+                response = self._serial_interface.write_read(request,use_readline=False,size=READ_SIZE)
                 self._debug_print('len(response)',len(response))
                 request_attempt += 1
                 if (len(response) % RESPONSE_LENGTH) == 0:
@@ -810,8 +810,8 @@ class ZaberStage(object):
         Aliases is a dictionary with serial numbers as keys and lists of aliases as values.
         '''
         aliases_prev = self.get_aliases()
-        if aliases_prev.keys() != aliases.keys():
-            error_string = 'aliases.keys() must equal: {0}'.format(aliases_prev.keys())
+        if list(aliases_prev.keys()) != list(aliases.keys()):
+            error_string = 'aliases.keys() must equal: {0}'.format(list(aliases_prev.keys()))
             raise ZaberError(error_string)
         for serial_number in aliases:
             try:
@@ -917,7 +917,7 @@ class ZaberStage(object):
                 positions[serial_number]['position'][2] = position_microstep[self._z_axis['actuator']] * self._z_microstep_size
                 positions[serial_number]['position_microstep'][2] = position_microstep[self._z_axis['actuator']]
         if len(positions) == 1:
-            return positions[positions.keys()[0]]
+            return positions[list(positions.keys())[0]]
         else:
             return positions
 
@@ -934,7 +934,7 @@ class ZaberStage(object):
             if self._z_axis is not None:
                 positions[serial_number][2] = position_microstep[self._z_axis['actuator']] * self._z_microstep_size
         if len(positions) == 1:
-            return positions[positions.keys()[0]]
+            return positions[list(positions.keys())[0]]
         else:
             return positions
 
@@ -1258,13 +1258,13 @@ def find_zaber_device_ports(baudrate=None,
                             debug=DEBUG,
                             *args,
                             **kwargs):
-    serial_device_ports = find_serial_device_ports(try_ports=try_ports, debug=debug)
+    serial_interface_ports = find_serial_interface_ports(try_ports=try_ports, debug=debug)
     os_type = platform.system()
     if os_type == 'Darwin':
-        serial_device_ports = [x for x in serial_device_ports if 'tty.usbmodem' in x or 'tty.usbserial' in x]
+        serial_interface_ports = [x for x in serial_interface_ports if 'tty.usbmodem' in x or 'tty.usbserial' in x]
 
     zaber_device_ports = {}
-    for port in serial_device_ports:
+    for port in serial_interface_ports:
         try:
             dev = ZaberDevice(port=port,baudrate=baudrate,debug=debug)
             try:
@@ -1292,11 +1292,11 @@ def find_zaber_device_port(baudrate=None,
                                                  serial_number=serial_number,
                                                  debug=debug)
     if len(zaber_device_ports) == 1:
-        return zaber_device_ports.keys()[0]
+        return list(zaber_device_ports.keys())[0]
     elif len(zaber_device_ports) == 0:
-        serial_device_ports = find_serial_device_ports(try_ports)
+        serial_interface_ports = find_serial_interface_ports(try_ports)
         err_string = 'Could not find any Zaber devices. Check connections and permissions.\n'
-        err_string += 'Tried ports: ' + str(serial_device_ports)
+        err_string += 'Tried ports: ' + str(serial_interface_ports)
         raise RuntimeError(err_string)
     else:
         err_string = 'Found more than one Zaber device. Specify port or serial_number.\n'
