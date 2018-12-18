@@ -1,14 +1,12 @@
 # -*- coding: utf-8 -*-
-
 import serial
 import time
 import atexit
 import platform
 import os
-from exceptions import Exception
 import threading
 
-from serial_interface import SerialInterface, SerialInterfaces, find_serial_interface_ports, WriteFrequencyError
+from serial_interface import SerialInterface, SerialInterfaces, find_serial_interface_ports, WriteFrequencyError, WriteError, ReadError
 
 try:
     from pkg_resources import get_distribution, DistributionNotFound
