@@ -9,7 +9,7 @@ with open(path.join(here, 'DESCRIPTION.rst'), encoding='utf-8') as f:
 
 setup(
     name='zaber_device',
-    version_format='{tag}.dev{commits}+{sha}',
+    version_format='{tag}',
     setup_requires=['very-good-setuptools-git-version'],
     description='Interface to Zaber motorized linear slides.',
     long_description=long_description,
