@@ -15,7 +15,7 @@ setup(
     long_description=long_description,
     url='https://github.com/janelia-pypi/zaber_device_python',
     author='Peter Polidoro',
-    author_email='peterpolidoro@gmail.com',
+    author_email='peter@polidoro.io',
     license='BSD',
     classifiers=[
         'Development Status :: 4 - Beta',

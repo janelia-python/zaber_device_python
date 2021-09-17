@@ -7,7 +7,7 @@ methods to it to interface to Zaber motorized linear slides.
 
 Authors::
 
-    Peter Polidoro <peterpolidoro@gmail.com>
+    Peter Polidoro <peter@polidoro.io>
 
 License::
 

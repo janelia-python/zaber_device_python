@@ -1,6 +1,6 @@
 #+TITLE: zaber_device_python
 #+AUTHOR: Peter Polidoro
-#+EMAIL: peterpolidoro@gmail.com
+#+EMAIL: peter@polidoro.io
 
 * Package Information
   - Name :: zaber_device_python
@@ -8,7 +8,7 @@
   - License :: BSD
   - URL :: https://github.com/janelia-pypi/zaber_device_python
   - Author :: Peter Polidoro
-  - Email :: peterpolidoro@gmail.com
+  - Email :: peter@polidoro.io
 
   This Python package (zaber_device) creates a class named ZaberDevice,
   which contains an instance of serial_interface.SerialInterface and adds
