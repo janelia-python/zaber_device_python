@@ -13,7 +13,7 @@ setup(
     setup_requires=['very-good-setuptools-git-version'],
     description='Interface to Zaber motorized linear slides.',
     long_description=long_description,
-    url='https://github.com/janelia-pypi/zaber_device_python',
+    url='https://github.com/janelia-python/zaber_device_python',
     author='Peter Polidoro',
     author_email='peter@polidoro.io',
     license='BSD',

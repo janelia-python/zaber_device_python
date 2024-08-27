@@ -6,7 +6,7 @@
   - Name :: zaber_device_python
   - Version :: 2.0.1
   - License :: BSD
-  - URL :: https://github.com/janelia-pypi/zaber_device_python
+  - URL :: https://github.com/janelia-python/zaber_device_python
   - Author :: Peter Polidoro
   - Email :: peter@polidoro.io
 
@@ -251,7 +251,7 @@
 
 * Installation
 
-  [[https://github.com/janelia-pypi/python_setup]]
+  [[https://github.com/janelia-python/python_setup]]
 
 ** Linux and Mac OS X
 
